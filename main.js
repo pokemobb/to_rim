@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { buildScenery, LABEL_HEIGHT } from './scenery.js';
 import { toJson } from './layout-format.js';
+import { createPeople } from './people.js';
 
 // แบบโต๊ะที่แอดมินเลือกได้ (หน่วยเมตร) — seats คือตำแหน่งเก้าอี้เทียบกับกลางโต๊ะ
 const TYPES = {
@@ -149,6 +150,7 @@ const hitMat = new THREE.MeshBasicMaterial({ visible: false });
 
 const tablesGroup = new THREE.Group();
 scene.add(tablesGroup);
+const people = createPeople(scene, grid, TYPES);
 const tableById = new Map();
 let tableList = [];
 let topsMesh;
@@ -206,6 +208,7 @@ function buildTables() {
     tablesGroup.add(mesh);
   }
   for (const t of tableList) paint(t.id);
+  people.seat(tableList, selectedId);
 }
 
 // ---------- หมุดปักโต๊ะที่เลือก ----------
@@ -390,6 +393,7 @@ function setSelected(id) {
     marker.position.set(t.x, 0, t.z);
   }
   setGuide(mode === 'admin' ? null : t);
+  if (prev !== id && mode !== 'admin') people.seat(tableList, id);
 }
 
 const raycaster = new THREE.Raycaster();
@@ -894,6 +898,7 @@ $('adm-download').addEventListener('click', () => {
 
 function enterAdmin() {
   mode = 'admin';
+  people.setVisible(false); // แก้ผังต้องเห็นโต๊ะชัดๆ
   document.querySelector('.title').textContent = '🛠️ แก้ผังโต๊ะ (แอดมิน)';
   $('hint').textContent = 'แตะโต๊ะเพื่อเปลี่ยนแบบ · แตะช่องว่างเพื่อเพิ่มโต๊ะ';
   $('admin').hidden = false;
@@ -934,6 +939,7 @@ renderer.setAnimationLoop(() => {
   // เลขโต๊ะโชว์เฉพาะตัวที่จอง/เลือกอยู่ (และตัวที่เมาส์ชี้บนคอม) ไม่ให้ลายตา
   for (const t of tableList) t.tag.visible = t.id === selectedId || t.id === hoverId;
 
+  people.update(time);
   chevrons.offset.x = -((time * 1.2) % 1); // ลูกศรไหลจากประตูไปหาโต๊ะ
   pin.position.y = 2.1 + Math.sin(time * 3) * 0.15;
   pin.rotation.y = time;
