@@ -30,7 +30,6 @@ const COLOR = {
   pin: 0xff3b45,
 };
 
-const LABEL_DISTANCE = 32; // ซูมเข้าใกล้กว่านี้ถึงจะโชว์ชื่อโต๊ะทุกตัว
 const VIEW = -1; // มองจากฝั่ง z ติดลบ = ฝั่งประตูคู่ด้านบนที่เดินเข้ามา (เปลี่ยนเป็น 1 ถ้าจะมองจากฝั่งตรงข้าม)
 
 const $ = (id) => document.getElementById(id);
@@ -769,9 +768,8 @@ renderer.setAnimationLoop(() => {
     if (k === 1) flight = null;
   }
 
-  // ป้ายชื่อโต๊ะโชว์เฉพาะตอนซูมเข้า (ไม่งั้นเต็มจอ) ยกเว้นโต๊ะที่เลือกกับโหมดแอดมิน
-  const near = mode === 'admin' || camera.position.distanceTo(controls.target) < LABEL_DISTANCE;
-  for (const t of tableList) t.tag.visible = near || t.id === selectedId;
+  // เลขโต๊ะโชว์เฉพาะตัวที่จอง/เลือกอยู่ (และตัวที่เมาส์ชี้บนคอม) ไม่ให้ลายตา
+  for (const t of tableList) t.tag.visible = t.id === selectedId || t.id === hoverId;
 
   pin.position.y = 2.1 + Math.sin(time * 3) * 0.15;
   pin.rotation.y = time;
