@@ -4,7 +4,12 @@ import * as THREE from 'three';
 // ใช้ InstancedMesh ทั้งหมด คนหลายร้อยคนก็ยังลื่นบนมือถือ
 
 const palette = (list) => list.map((c) => new THREE.Color(c));
-const SHIRTS = palette(['#f7f7f2', '#f7f7f2', '#f7f7f2', '#eef3f8', '#4f7cac', '#e07a5f', '#81b29a', '#f2cc8f', '#3d405b', '#b56576']);
+// สีเสื้อที่คนที่นี่ใส่กันส่วนใหญ่: ขาว, บานเย็น, กากี (สุ่มตามสัดส่วนนี้)
+const SHIRTS = palette([
+  '#f7f7f2', '#f7f7f2', '#f2f2ec', '#f7f7f2',
+  '#c2185b', '#d0306f', '#b8155a',
+  '#bfa77a', '#c8b48a', '#b39c6c',
+]);
 const PANTS = palette(['#1f2a44', '#2b2b2b', '#3a4a5c', '#1f2a44']);
 const SKIN = palette(['#f1c27d', '#e0ac69', '#c68642', '#ffdbac', '#d9a066']);
 const HAIR = palette(['#1b1b1b', '#2a1d16', '#3b2a20', '#111111']);
