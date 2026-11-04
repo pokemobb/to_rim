@@ -30,7 +30,10 @@ const UP = new THREE.Vector3(0, 1, 0);
 const RIGHT = new THREE.Vector3(1, 0, 0);
 
 export function createPeople(scene, grid, types) {
-  const mat = new THREE.MeshStandardMaterial({ roughness: 0.75 });
+  // emissive สีขาว = ทำให้คนดูจางลง ตอนโฟกัสโต๊ะที่จอง
+  const mat = new THREE.MeshStandardMaterial({ roughness: 0.75, emissive: 0xffffff, emissiveIntensity: 0 });
+  let focus = 0;
+  let focusTarget = 0;
   const geo = {
     torso: new THREE.CapsuleGeometry(0.17, 0.3, 4, 10),
     head: new THREE.SphereGeometry(0.12, 14, 10),
@@ -98,7 +101,7 @@ export function createPeople(scene, grid, types) {
       const type = types[t.type] ?? types.long6;
       const rot = THREE.MathUtils.degToRad(t.rot ?? 0);
       for (const [sx, sz] of type.seats) {
-        if (rand() > 0.2 + busy * 0.65) continue;
+        if (rand() > 0.06 + busy * 0.34) continue; // เฉลี่ยราว 1 ใน 4 ของที่นั่ง
         // หันหน้าเข้าหาโต๊ะ
         const lx = Math.abs(sz) >= Math.abs(sx) ? 0 : -Math.sign(sx);
         const lz = Math.abs(sz) >= Math.abs(sx) ? -Math.sign(sz) : 0;
@@ -147,8 +150,8 @@ export function createPeople(scene, grid, types) {
   const back = grid.z0 + (rows - 1) * grid.rowSpacing + grid.rowSpacing * 0.6;
   const rand = seeded(20251104);
   const walkers = [];
-  for (let i = 0; i < 14; i++) {
-    const alongX = i < 3;
+  for (let i = 0; i < 6; i++) {
+    const alongX = i < 1;
     let from;
     let to;
     if (alongX) {
@@ -190,6 +193,8 @@ export function createPeople(scene, grid, types) {
 
   function update(time) {
     if (!group.visible) return;
+    focus += (focusTarget - focus) * 0.08;
+    mat.emissiveIntensity = focus * 0.6;
     for (const m of Object.values(walking)) m.count = 0;
     for (const w of walkers) {
       // เดินไป-กลับ ตามช่วงทางเดินของตัวเอง
@@ -237,5 +242,6 @@ export function createPeople(scene, grid, types) {
     seat,
     update,
     setVisible(on) { group.visible = on; },
+    setFocus(on) { focusTarget = on ? 1 : 0; },
   };
 }

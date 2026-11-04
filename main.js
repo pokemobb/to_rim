@@ -26,6 +26,7 @@ const COLOR = {
   table: 0x2f5d80,
   tableHover: 0x4c86b3,
   tableSelected: 0xff4d55,
+  tableFaded: 0xa9bccd, // โต๊ะอื่นตอนโฟกัสโต๊ะที่จอง
   seat: 0xb9c3cf,
   metal: 0x6b7280,
   pin: 0xff3b45,
@@ -377,7 +378,7 @@ function paint(id) {
   const t = tableById.get(id);
   if (!t) return;
   const on = id === selectedId || highlighted.has(id);
-  const color = on ? COLOR.tableSelected : id === hoverId ? COLOR.tableHover : COLOR.table;
+  const color = on ? COLOR.tableSelected : id === hoverId ? COLOR.tableHover : focusOn ? COLOR.tableFaded : COLOR.table;
   topsMesh.setColorAt(t.index, tmpColor.set(color));
   topsMesh.instanceColor.needsUpdate = true;
 }
@@ -390,10 +391,20 @@ function setHighlight(ids) {
   for (const id of new Set([...prev, ...highlighted])) paint(id);
 }
 
+// มีโต๊ะที่จอง/เลือกอยู่ = ทำให้โต๊ะอื่นกับคนจางลง ให้สายตาไปที่โต๊ะกับเส้นนำทาง
+let focusOn = false;
+
 function setSelected(id) {
   const prev = selectedId;
   selectedId = id;
   if (prev) paint(prev);
+  const focus = !!tableById.get(id) && mode !== 'admin';
+  if (focus !== focusOn) {
+    focusOn = focus;
+    people.setFocus(focus);
+    seatMat.color.set(focus ? 0xd3dae2 : COLOR.seat);
+    for (const t of tableList) paint(t.id);
+  }
   const t = tableById.get(id);
   marker.visible = !!t;
   if (t) {
