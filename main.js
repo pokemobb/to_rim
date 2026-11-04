@@ -383,8 +383,11 @@ function flyToRoute(t) {
   if (!entranceDoors.length) return flyToTable(t);
   const door = guidePoints(t)[0];
   // เล็งค่อนไปทางโต๊ะ เผื่อที่ให้ป้ายลอยเหนือโต๊ะไม่ชนหัวจอ
-  const target = new THREE.Vector3(door.x + (t.x - door.x) * 0.6, 0.5, door.y + (t.z - door.y) * 0.6);
-  const d = Math.max(13, Math.hypot(door.x - t.x, door.y - t.z) * 1.3);
+  const target = new THREE.Vector3((door.x + t.x) / 2, 0.5, door.y + (t.z - door.y) * 0.6);
+  // ถอยให้พอทั้งแนวลึก และแนวกว้าง (จอมือถือแคบ เส้นที่ไปทางซ้าย/ขวาไกลๆ ต้องถอยมากขึ้น)
+  const halfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const byWidth = (Math.abs(t.x - door.x) / 2 + 3) / (halfFov * camera.aspect);
+  const d = Math.max(13, Math.abs(t.z - door.y) * 1.3, byWidth);
   flyTo(viewFrom(target, d * 1.22), target, 1200);
 }
 
@@ -432,7 +435,8 @@ function setSelected(id) {
   if (t) {
     paint(id);
     marker.position.set(t.x, 0, t.z);
-    const who = mode === 'friend' && shared.name ? `${shared.name} · ` : '';
+    const name = mode === 'friend' ? shared.name : groupId && groupState?.table === id ? groupState.by : '';
+    const who = name ? `${name} · ` : '';
     calloutEl.querySelector('.callout-text').textContent = `${who}โต๊ะ ${id}`;
   }
   setGuide(mode === 'admin' ? null : t);
@@ -506,7 +510,8 @@ function setPanel(open) {
   $('sheet').hidden = !(mode === 'owner' && active && open);
   $('banner').hidden = !(mode === 'friend' && open);
   $('pill').hidden = !active || open;
-  $('pill-text').textContent = mode === 'owner' ? `โต๊ะ ${selectedId} · แตะเพื่อแชร์` : pillText;
+  const by = groupId && groupState?.table === selectedId && groupState.by ? ` · โดย ${groupState.by}` : ' · แตะเพื่อแชร์';
+  $('pill-text').textContent = mode === 'owner' ? `โต๊ะ ${selectedId}${by}` : pillText;
 }
 
 $('pill').addEventListener('click', () => setPanel(true));
@@ -529,13 +534,138 @@ nameInput.addEventListener('input', () => store.set('torim:name', nameInput.valu
 let confirmedId = null;
 let sheetPending = false;
 
+// ---------- กลุ่ม: ใครที่มีลิงก์กลุ่มก็เลือก/เปลี่ยนโต๊ะได้ ทุกคนเห็นโต๊ะเดียวกัน ----------
+// ลิงก์กลุ่มหน้าตาแบบ ?g=ab12cd34 ใช้ซ้ำได้ทุกวัน (เก็บไว้ที่ Upstash Redis ผ่าน api/group.js)
+const GROUP_RE = /^[a-z0-9]{6,16}$/;
+const GROUP_KEY = 'torim:group';
+let groupId = GROUP_RE.test(params.get('g') ?? '') ? params.get('g') : store.get(GROUP_KEY);
+if (!GROUP_RE.test(groupId ?? '')) groupId = null;
+if (groupId) store.set(GROUP_KEY, groupId);
+let groupState = null; // { table, date, by, at }
+let pollTimer;
+
+const myName = () => nameInput.value.trim();
+const newGroupId = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
+
+async function groupApi(method, body) {
+  try {
+    const res = method === 'GET'
+      ? await fetch(`api/group?g=${groupId}`, { cache: 'no-store' })
+      : await fetch('api/group', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ g: groupId, ...body }),
+      });
+    if (!res.ok) return { error: res.status };
+    return await res.json();
+  } catch {
+    return { error: 0 };
+  }
+}
+// ไม่มีระบบกลุ่มบนเซิร์ฟเวอร์ (เปิดในเครื่อง หรือยังไม่ได้ต่อ Redis) = ใช้แบบเดิม
+const groupUnavailable = (r) => [404, 405, 501, 503].includes(r.error);
+
+function leaveGroup() {
+  groupId = null;
+  groupState = null;
+  store.set(GROUP_KEY, null);
+  clearTimeout(pollTimer);
+  history.replaceState(null, '', location.pathname);
+  updateGroupUi();
+}
+
+const agoText = (at) => {
+  const min = Math.round((Date.now() - at) / 60000);
+  if (min < 1) return 'เมื่อสักครู่';
+  if (min < 60) return `${min} นาทีที่แล้ว`;
+  return `${Math.round(min / 60)} ชม.ที่แล้ว`;
+};
+
+function updateGroupUi() {
+  $('share').textContent = groupId ? 'ส่งลิงก์กลุ่ม' : 'แชร์ให้เพื่อน';
+  $('preview').hidden = !!groupId; // ในกลุ่ม ทุกคนเห็นหน้าเดียวกับเราอยู่แล้ว
+  $('clear').textContent = groupId ? 'ยกเลิกโต๊ะ (ทุกคนในกลุ่ม)' : 'ยกเลิกการจอง';
+  if (mode === 'owner') {
+    $('hint').textContent = groupId
+      ? '👥 ใครในกลุ่มก็เลือกหรือเปลี่ยนโต๊ะได้ ทุกคนเห็นเหมือนกัน'
+      : 'แตะโต๊ะที่จะนั่ง กดจอง แล้วแชร์ให้เพื่อน';
+  }
+}
+
+// รับโต๊ะล่าสุดของกลุ่มมาแสดง (announce = มีคนอื่นเพิ่งเปลี่ยน ให้แจ้งเตือน)
+function applyGroup(state, announce) {
+  groupState = state;
+  const id = state.date === today() && tableById.has(state.table) ? state.table : null;
+  if (id === confirmedId) {
+    if (id && !sheetPending) {
+      setSelected(id); // อัปเดตชื่อคนเลือกบนป้าย
+      fillSheet(id, false);
+      setPanel(panelOpen);
+    }
+    return;
+  }
+  confirmedId = id;
+  store.set('torim:pick', id ? { id, date: today() } : null);
+  if (announce) {
+    const who = state.by || 'เพื่อน';
+    toast(id ? `${who}เปลี่ยนเป็นโต๊ะ ${id}` : `${who}ยกเลิกโต๊ะแล้ว`);
+  }
+  if (sheetPending) return; // กำลังเลือกโต๊ะอยู่ ไม่ขัดจังหวะ
+  setSelected(id);
+  if (id) fillSheet(id, false);
+  setPanel(panelOpen && !!id);
+  if (announce && id) flyToRoute(tableById.get(id)); // พาไปดูโต๊ะใหม่ที่เพื่อนเลือก
+}
+
+async function pollGroup(first = false) {
+  clearTimeout(pollTimer);
+  if (!groupId || mode !== 'owner') return;
+  if (!document.hidden) {
+    const state = await groupApi('GET');
+    if (groupUnavailable(state)) return leaveGroup();
+    if (!state.error && (first || state.at !== groupState?.at)) {
+      applyGroup(state, !first && groupState !== null);
+      const t = tableById.get(confirmedId);
+      if (first && t) setTimeout(() => flyToRoute(t), 300);
+    }
+  }
+  pollTimer = setTimeout(pollGroup, 6000);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) pollGroup(); });
+
+// ตั้งโต๊ะของกลุ่ม (สร้างกลุ่มใหม่ให้เองถ้ายังไม่มี) คืนค่า false ถ้าบันทึกไม่สำเร็จ
+async function saveGroupTable(table) {
+  const creating = !groupId;
+  if (creating) groupId = newGroupId();
+  const state = await groupApi('POST', { table, date: today(), by: myName() });
+  if (state.error !== undefined) {
+    if (creating || groupUnavailable(state)) {
+      leaveGroup();
+      return creating; // ไม่มีระบบกลุ่ม: เก็บในเครื่องแบบเดิมไปก่อน
+    }
+    toast('บันทึกไม่สำเร็จ ลองอีกครั้ง');
+    return false;
+  }
+  groupState = state;
+  if (creating) {
+    store.set(GROUP_KEY, groupId);
+    history.replaceState(null, '', `${location.pathname}?g=${groupId}`);
+    updateGroupUi();
+    pollGroup();
+  }
+  return true;
+}
+
 function fillSheet(id, pending) {
   sheetPending = pending;
   const t = tableById.get(id);
   $('sel-id').textContent = id;
+  const byLine = groupId && groupState?.table === id && groupState.at
+    ? ` · เลือกโดย ${groupState.by || 'เพื่อน'} ${agoText(groupState.at)}`
+    : '';
   $('sel-sub').textContent = pending && confirmedId
-    ? `เปลี่ยนจากโต๊ะ ${confirmedId} ที่จองไว้`
-    : `${TYPES[t.type]?.name ?? ''} · ${describe(id)}`;
+    ? `เปลี่ยนจากโต๊ะ ${confirmedId} ที่จองไว้${groupId ? ' (ทุกคนในกลุ่มจะเห็น)' : ''}`
+    : `${describe(id)}${byLine}`;
   $('sheet-confirm').hidden = !pending;
   $('sheet-share').hidden = pending;
 }
@@ -547,11 +677,17 @@ function ownerPick(id) {
   setPanel(true);
 }
 
-function confirmPick() {
-  confirmedId = selectedId;
-  store.set('torim:pick', { id: confirmedId, date: today() });
-  fillSheet(confirmedId, false);
-  toast(`จองโต๊ะ ${confirmedId} แล้ว ✓`);
+async function confirmPick() {
+  const id = selectedId;
+  $('pick-ok').disabled = true;
+  const ok = await saveGroupTable(id);
+  $('pick-ok').disabled = false;
+  if (!ok || selectedId !== id) return;
+  confirmedId = id;
+  store.set('torim:pick', { id, date: today() });
+  setSelected(id); // อัปเดตชื่อคนเลือกบนป้าย
+  fillSheet(id, false);
+  toast(groupId ? `ตั้งโต๊ะ ${id} ให้กลุ่มแล้ว ✓` : `จองโต๊ะ ${id} แล้ว ✓`);
 }
 
 function cancelPick() {
@@ -566,18 +702,20 @@ $('pick-cancel').addEventListener('click', cancelPick);
 
 function enterOwner() {
   mode = 'owner';
-  history.replaceState(null, '', location.pathname);
+  history.replaceState(null, '', groupId ? `${location.pathname}?g=${groupId}` : location.pathname);
   $('adm-enter').hidden = false; // ปุ่มเข้าแอดมินโชว์เฉพาะหน้าปกติ ไม่โชว์ในลิงก์ที่เพื่อนเปิด
   $('hint').hidden = false;
-  $('hint').textContent = 'แตะโต๊ะที่จะนั่ง กดจอง แล้วแชร์ให้เพื่อน';
+  updateGroupUi();
   // จำโต๊ะที่จองไว้ของวันนี้ เปิดเว็บใหม่ก็ยังปักหมุดอยู่ (แสดงเป็นป้ายย่อ)
   const last = store.get('torim:pick');
   confirmedId = last?.date === today() && tableById.has(last.id) ? last.id : null;
   cancelPick();
   flyTo(HOME.pos.clone(), HOME.target.clone());
+  pollGroup(true);
 }
 
-$('clear').addEventListener('click', () => {
+$('clear').addEventListener('click', async () => {
+  if (groupId && !(await saveGroupTable(null))) return;
   confirmedId = null;
   store.set('torim:pick', null);
   cancelPick();
@@ -595,6 +733,10 @@ function toast(text) {
 function shareUrl() {
   const name = nameInput.value.trim();
   const url = new URL(location.pathname, location.origin);
+  if (groupId) {
+    url.searchParams.set('g', groupId);
+    return url;
+  }
   url.searchParams.set('t', selectedId);
   url.searchParams.set('d', today());
   if (name) url.searchParams.set('n', name);
@@ -611,7 +753,9 @@ $('preview').addEventListener('click', () => {
 $('share').addEventListener('click', async () => {
   const name = nameInput.value.trim();
   const url = shareUrl();
-  const text = `${name || 'เรา'}นั่งโต๊ะ ${selectedId} ที่โรงอาหาร 📍`;
+  const text = groupId
+    ? `วันนี้นั่งโต๊ะ ${selectedId} ที่โรงอาหาร 📍 ใครได้โต๊ะอื่นก่อน กดเปลี่ยนในลิงก์นี้ได้เลย`
+    : `${name || 'เรา'}นั่งโต๊ะ ${selectedId} ที่โรงอาหาร 📍`;
 
   if (navigator.share) {
     try {
