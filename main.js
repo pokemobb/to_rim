@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { buildScenery, LABEL_HEIGHT } from './scenery.js';
+import { toJson } from './layout-format.js';
 
 // แบบโต๊ะที่แอดมินเลือกได้ (หน่วยเมตร) — seats คือตำแหน่งเก้าอี้เทียบกับกลางโต๊ะ
 const TYPES = {
@@ -530,16 +531,86 @@ function commit() {
   renderAdmin();
 }
 
-$('adm-ok').addEventListener('click', () => {
+// ---------- บันทึกขึ้นเว็บจริง: ส่งไป /api/save-layout ซึ่งจะ commit layout.json ขึ้น GitHub ----------
+const PASS_KEY = 'torim:adminPass'; // จำรหัสไว้แค่จนปิดแท็บ (sessionStorage)
+const session = {
+  get() { try { return sessionStorage.getItem(PASS_KEY); } catch { return null; } },
+  set(v) { try { if (v) sessionStorage.setItem(PASS_KEY, v); else sessionStorage.removeItem(PASS_KEY); } catch {} },
+};
+
+function keepLocally(message) {
   saved = structuredClone(layout.tables);
   store.set('torim:draft', saved);
   adminSel = null;
   renderAdmin();
-  toast('บันทึกแล้ว ✓');
+  toast(message);
+}
+
+function askPassword(message) {
+  $('adm-auth').hidden = false;
+  $('adm-ok').hidden = true; // ใช้ปุ่ม "บันทึก" ข้างช่องรหัสแทน
+  $('adm-status').textContent = message;
+  $('adm-pass').focus();
+}
+
+let saving = false;
+async function publish(password = session.get()) {
+  if (saving) return;
+  if (!password) return askPassword('ใส่รหัสแอดมิน แล้วกดบันทึก');
+
+  saving = true;
+  const buttons = [$('adm-ok'), $('adm-send'), $('adm-push')];
+  for (const b of buttons) b.disabled = true;
+  $('adm-status').textContent = 'กำลังบันทึกขึ้นเว็บ…';
+
+  let res = null;
+  try {
+    res = await fetch('api/save-layout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password, tables: layout.tables }),
+    });
+  } catch {}
+  const data = res ? await res.json().catch(() => ({})) : {};
+  saving = false;
+  for (const b of buttons) b.disabled = false;
+
+  // ยังไม่มีระบบบันทึกออนไลน์ (เปิดในเครื่อง / ยังไม่ได้ตั้งค่าบน Vercel) — เก็บในเครื่องไปก่อน
+  if (!res || [404, 405, 501].includes(res.status)) return keepLocally('บันทึกในเครื่องแล้ว (ระบบบันทึกขึ้นเว็บใช้ได้เมื่ออยู่บน Vercel)');
+  if (res.status === 503) return keepLocally('บันทึกในเครื่องแล้ว — ยังไม่ได้ตั้ง GITHUB_TOKEN / ADMIN_PASSWORD บน Vercel');
+  if (res.status === 401) {
+    session.set(null);
+    $('adm-pass').value = '';
+    return askPassword('รหัสไม่ถูกต้อง ลองใหม่อีกครั้ง');
+  }
+  if (!res.ok) {
+    $('adm-status').textContent = `บันทึกไม่สำเร็จ (${data.error ?? res.status}) ลองใหม่อีกครั้ง`;
+    return;
+  }
+
+  session.set(password);
+  layout.tables = data.tables;
+  published.tables = structuredClone(data.tables);
+  saved = structuredClone(data.tables);
+  store.set('torim:draft', null);
+  $('adm-auth').hidden = true;
+  $('adm-pass').value = '';
+  adminSel = null;
+  buildTables();
+  renderAdmin();
+  toast('บันทึกขึ้นเว็บแล้ว ✓ เพื่อนจะเห็นผังใหม่ในราว 1 นาที');
+}
+
+$('adm-ok').addEventListener('click', () => publish());
+$('adm-push').addEventListener('click', () => publish());
+$('adm-send').addEventListener('click', () => publish($('adm-pass').value));
+$('adm-pass').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') publish($('adm-pass').value);
 });
 
 $('adm-cancel').addEventListener('click', () => {
   layout.tables = structuredClone(saved);
+  $('adm-auth').hidden = true;
   buildTables();
   renderAdmin();
 });
@@ -590,17 +661,21 @@ function renderAdmin() {
 
   const pending = isPending();
   $('adm-confirm').hidden = !pending;
+  $('adm-ok').hidden = !$('adm-auth').hidden;
   $('adm-publish').hidden = pending;
   $('adm-close').hidden = pending; // มีของค้างอยู่ ต้องเลือกตกลงหรือยกเลิกก่อน
   if (pending) {
-    $('adm-status').textContent = 'ยังไม่ได้บันทึก — กด "ตกลง" เพื่อบันทึก หรือ "ยกเลิก" เพื่อย้อนกลับ';
+    $('adm-status').textContent = 'ยังไม่ได้บันทึก — กด "ตกลง" เพื่อบันทึกขึ้นเว็บ หรือ "ยกเลิก" เพื่อย้อนกลับ';
     return;
   }
 
+  // ไม่มีอะไรค้าง แต่ผังในเครื่องยังต่างจากบนเว็บ (เคยบันทึกไว้ในเครื่องตอนออฟไลน์)
   const dirty = signature(layout.tables) !== signature(published.tables);
+  $('adm-auth').hidden = true;
   $('adm-status').textContent = dirty
-    ? 'มีการแก้ไขที่ยังไม่เผยแพร่ — กดดาวน์โหลด แล้วเอาไฟล์ไปแทน layout.json ใน GitHub'
-    : 'ตรงกับผังที่เผยแพร่อยู่ตอนนี้';
+    ? 'มีผังที่บันทึกไว้ในเครื่อง แต่ยังไม่ขึ้นเว็บ'
+    : 'ตรงกับผังบนเว็บตอนนี้';
+  $('adm-push').hidden = !dirty;
   $('adm-download').disabled = !dirty;
   $('adm-reset').disabled = !dirty;
 }
@@ -642,13 +717,9 @@ $('adm-reset').addEventListener('click', () => {
   renderAdmin();
 });
 
-// เขียน JSON ให้อ่านง่าย: object ที่ไม่มีอะไรซ้อนข้างในอยู่บรรทัดเดียว
-const toJson = (data) => JSON.stringify(data, null, 2)
-  .replace(/\{\n\s+([^{}[\]]*?)\n\s+\}/g, (_, body) => `{ ${body.replace(/,\n\s+/g, ', ')} }`);
-
 $('adm-download').addEventListener('click', () => {
   const tables = [...layout.tables].sort((a, b) => a.row - b.row || a.col - b.col);
-  const blob = new Blob([`${toJson({ ...published, tables })}\n`], { type: 'application/json' });
+  const blob = new Blob([toJson({ ...published, tables })], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'layout.json';

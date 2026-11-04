@@ -95,13 +95,20 @@
     </div>
     <hr>
     <div class="label" id="adm-status"></div>
+    <div class="share-row" id="adm-auth" hidden>
+      <input id="adm-pass" type="password" placeholder="รหัสแอดมิน" autocomplete="current-password" aria-label="รหัสแอดมิน">
+      <button id="adm-send" class="primary">บันทึก</button>
+    </div>
     <div class="actions" id="adm-confirm" hidden>
       <button id="adm-cancel" class="ghost">ยกเลิก</button>
       <button id="adm-ok" class="primary">✓ ตกลง</button>
     </div>
-    <div class="actions" id="adm-publish">
-      <button id="adm-download" class="primary">ดาวน์โหลด layout.json</button>
-      <button id="adm-reset" class="ghost">ทิ้งที่แก้</button>
+    <div class="stack" id="adm-publish">
+      <button id="adm-push" class="primary" hidden>บันทึกขึ้นเว็บ</button>
+      <div class="actions">
+        <button id="adm-download" class="ghost">ดาวน์โหลด layout.json</button>
+        <button id="adm-reset" class="ghost">ทิ้งที่แก้</button>
+      </div>
     </div>
   </section>
 
