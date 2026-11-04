@@ -660,6 +660,7 @@ function renderAdmin() {
   }
 
   const pending = isPending();
+  $('admin').hidden = false;
   $('adm-confirm').hidden = !pending;
   $('adm-ok').hidden = !$('adm-auth').hidden;
   $('adm-publish').hidden = pending;
@@ -678,6 +679,8 @@ function renderAdmin() {
   $('adm-push').hidden = !dirty;
   $('adm-download').disabled = !dirty;
   $('adm-reset').disabled = !dirty;
+  // ไม่ได้แตะโต๊ะ และไม่มีอะไรค้าง = ซ่อนการ์ดให้เห็นผังเต็มจอ (คำแนะนำอยู่บนหัวแล้ว)
+  $('admin').hidden = !adminSel && !dirty;
 }
 
 $('adm-close').addEventListener('click', () => { adminSel = null; renderAdmin(); });
