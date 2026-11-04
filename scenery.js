@@ -12,7 +12,6 @@ const M = {
   counterTop: mat(0xf6f3ee, { roughness: 0.35 }),
   shelf: mat(0xfafafa, { roughness: 0.5 }),
   item: mat(0xffffff, { roughness: 0.6 }), // สีมาจาก instance color
-  awning: mat(0xffffff, { roughness: 0.9 }),
   steel: mat(0xc7cdd3, { metalness: 0.6, roughness: 0.35 }),
   dark: mat(0x3b4350),
   glass: new THREE.MeshStandardMaterial({ color: 0xa9d8f2, transparent: true, opacity: 0.35, roughness: 0.1 }),
@@ -48,7 +47,7 @@ function floorPatch(w, d, color) {
   return m;
 }
 
-// ของชิ้นเล็กจำนวนมาก (สินค้า ถาด ลายกันสาด) รวมเป็น InstancedMesh เดียวให้ลื่นบนมือถือ
+// ของชิ้นเล็กจำนวนมาก (สินค้า ถาด) รวมเป็น InstancedMesh เดียวให้ลื่นบนมือถือ
 // แต่ละชิ้น: { x, y (กึ่งกลาง), z, w, h, d, color, rx }
 function instanced(material, list) {
   const im = new THREE.InstancedMesh(unit, material, list.length);
@@ -112,14 +111,6 @@ function shop(W, D) {
   }
   g.add(instanced(M.shelf, boards), instanced(M.item, items));
 
-  // กันสาดลายทาง
-  const stripes = Math.round(W / 0.6);
-  const stW = W / stripes;
-  const awning = [];
-  for (let i = 0; i < stripes; i++) {
-    awning.push({ x: -W / 2 + stW * (i + 0.5), y: 2.5, z: D / 2 + 0.2, w: stW, h: 0.03, d: 1.1, rx: 0.35, color: i % 2 ? 0xfff6ea : 0xf2704f });
-  }
-  g.add(instanced(M.awning, awning));
   return g;
 }
 

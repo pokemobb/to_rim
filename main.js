@@ -13,11 +13,12 @@ const TYPES = {
     d: 1.0,
     seats: [[-0.8, -0.85], [0, -0.85], [0.8, -0.85], [-0.8, 0.85], [0, 0.85], [0.8, 0.85]],
   },
+  // คงชื่อ square4 ไว้ให้ตรงกับ layout.json เดิม แต่เป็นโต๊ะจัตุรัสนั่ง 2 คนหัวท้าย (กด "หมุน 90°" เพื่อสลับด้านได้)
   square4: {
-    name: 'โต๊ะจัตุรัส 4 ที่นั่ง',
+    name: 'โต๊ะจัตุรัส 2 ที่นั่ง',
     w: 1.1,
     d: 1.1,
-    seats: [[0, -0.85], [0, 0.85], [-0.85, 0], [0.85, 0]],
+    seats: [[0, -0.85], [0, 0.85]],
   },
 };
 
@@ -839,7 +840,6 @@ function scopeCells() {
 }
 const scopeTables = () => scopeCells().map((c) => findTable(c.col, c.row)).filter(Boolean);
 const scopeEmpty = () => scopeCells().filter((c) => !findTable(c.col, c.row));
-const isSquare = (t) => TYPES[t.type].w === TYPES[t.type].d;
 
 for (const btn of $('adm-scope').children) {
   btn.addEventListener('click', () => {
@@ -856,10 +856,7 @@ const typeButtons = Object.keys(TYPES).map((type) => {
     const tables = scopeTables();
     // มีโต๊ะอยู่แล้ว = เปลี่ยนแบบทุกตัว, ว่างทั้งหมด = วางโต๊ะใหม่ทุกช่อง
     if (tables.length) {
-      for (const t of tables) {
-        t.type = type;
-        if (isSquare(t)) delete t.rot;
-      }
+      for (const t of tables) t.type = type;
     } else {
       for (const c of scopeCells()) layout.tables.push({ ...c, type });
     }
@@ -997,7 +994,6 @@ function renderAdmin() {
       btn.classList.toggle('on', n > 0 && tables.every((t) => t.type === btn.dataset.type));
     }
     $('adm-table-actions').hidden = !n;
-    $('adm-rotate').hidden = !tables.some((t) => !isSquare(t));
     $('adm-delete').textContent = n > 1 ? `ลบ ${n} โต๊ะ` : 'ลบโต๊ะ';
     $('adm-fill').hidden = adminScope === 'one' || !n || !empty.length;
     $('adm-fill').textContent = `+ เติมโต๊ะในช่องว่าง ${empty.length} ช่อง`;
@@ -1039,7 +1035,7 @@ function renderAdmin() {
 $('adm-close').addEventListener('click', () => { adminSel = null; renderAdmin(); });
 
 $('adm-rotate').addEventListener('click', () => {
-  const tables = scopeTables().filter((t) => !isSquare(t));
+  const tables = scopeTables();
   const rotate = !tables[0]?.rot; // ยึดตัวแรกเป็นหลัก ให้ทั้งแถวหันเหมือนกัน
   for (const t of tables) {
     if (rotate) t.rot = 90;
