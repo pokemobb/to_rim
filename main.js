@@ -230,6 +230,107 @@ marker.add(pin, ring);
 marker.visible = false;
 scene.add(marker);
 
+// ---------- เส้นนำทางจากประตูทางเข้าไปถึงโต๊ะ ----------
+// เดินเข้าประตู → ทางเดินหน้าแถวที่ 1 → ทางเดินข้างแถวของโต๊ะ (ช่องระหว่างหัวโต๊ะ) → ถึงหัวโต๊ะ
+const doors = layout.landmarks.filter((l) => l.kind === 'door');
+const mainDoor = doors.find((l) => /ทางเข้า/.test(l.label ?? '')) ?? doors[0];
+// ประตูทางเข้าคู่: เริ่มเดินจากบานที่ใกล้โต๊ะที่สุด
+const entranceDoors = mainDoor
+  ? doors.filter((d) => Math.abs(d.z - mainDoor.z) < 0.5 && Math.abs(d.x - mainDoor.x) < 6)
+  : [];
+
+const GUIDE_BLUE = 0x007aff;
+const GUIDE_WIDTH = 0.5;
+const GUIDE_Y = 0.04;
+
+const chevrons = (() => {
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = '#007aff';
+  g.fillRect(0, 0, 128, 64);
+  g.strokeStyle = '#fff';
+  g.lineWidth = 9;
+  g.lineCap = g.lineJoin = 'round';
+  g.beginPath();
+  g.moveTo(50, 17);
+  g.lineTo(76, 32);
+  g.lineTo(50, 47);
+  g.stroke();
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+})();
+const guideMat = new THREE.MeshBasicMaterial({ map: chevrons, side: THREE.DoubleSide });
+const guideJointMat = new THREE.MeshBasicMaterial({ color: GUIDE_BLUE });
+const guideStartMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const guide = new THREE.Group();
+scene.add(guide);
+
+function guidePoints(t) {
+  const entrance = entranceDoors.reduce((a, b) => (Math.abs(a.x - t.x) <= Math.abs(b.x - t.x) ? a : b));
+  const inward = Math.sign(grid.z0 - entrance.z) || 1;
+  const front = grid.z0 - inward * grid.rowSpacing * 0.8;
+  const type = TYPES[t.type] ?? TYPES.long6;
+  const half = (t.rot ? type.d : type.w) / 2;
+  const sides = [t.x - grid.colSpacing / 2, t.x + grid.colSpacing / 2];
+  const aisle = sides.reduce((a, b) => (Math.abs(a - entrance.x) <= Math.abs(b - entrance.x) ? a : b));
+  const end = t.x + Math.sign(aisle - t.x) * (half + 0.3);
+  const pts = [
+    [entrance.x, entrance.z],
+    [entrance.x, front],
+    [aisle, front],
+    [aisle, t.z],
+    [end, t.z],
+  ].map(([x, z]) => new THREE.Vector2(x, z));
+  return pts.filter((p, i) => i === 0 || p.distanceTo(pts[i - 1]) > 0.05);
+}
+
+function setGuide(t) {
+  for (const child of [...guide.children]) {
+    guide.remove(child);
+    child.geometry.dispose();
+  }
+  if (!t || !entranceDoors.length) return;
+
+  const pts = guidePoints(t);
+  const pos = [];
+  const uv = [];
+  let u = 0;
+  const hw = GUIDE_WIDTH / 2;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    const len = a.distanceTo(b);
+    const n = new THREE.Vector2(-(b.y - a.y), b.x - a.x).normalize().multiplyScalar(hw);
+    const quad = [[a, n, u, 1], [a, n.clone().negate(), u, 0], [b, n, u + len, 1], [b, n.clone().negate(), u + len, 0]]
+      .map(([p, o, uu, vv]) => ({ x: p.x + o.x, z: p.y + o.y, uu, vv }));
+    for (const k of [0, 1, 2, 2, 1, 3]) {
+      pos.push(quad[k].x, GUIDE_Y, quad[k].z);
+      uv.push(quad[k].uu, quad[k].vv);
+    }
+    u += len;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  guide.add(new THREE.Mesh(geo, guideMat));
+
+  // มุมเลี้ยวมน + จุดเริ่มที่ประตู
+  const disc = (r, mat, p, y) => {
+    const m = new THREE.Mesh(new THREE.CircleGeometry(r, 32), mat);
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(p.x, y, p.y);
+    guide.add(m);
+  };
+  pts.slice(1, -1).forEach((p) => disc(hw, guideJointMat, p, GUIDE_Y - 0.005));
+  disc(hw * 1.6, guideJointMat, pts[0], GUIDE_Y + 0.004);
+  disc(hw * 0.7, guideStartMat, pts[0], GUIDE_Y + 0.008);
+}
+
 // ---------- กล้องบินไปหาโต๊ะ ----------
 let flight = null;
 const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
@@ -279,6 +380,7 @@ function setSelected(id) {
     paint(id);
     marker.position.set(t.x, 0, t.z);
   }
+  setGuide(mode === 'admin' ? null : t);
 }
 
 const raycaster = new THREE.Raycaster();
@@ -317,6 +419,7 @@ canvas.addEventListener('pointerup', (e) => {
   if (mode === 'owner') {
     const id = tableAt(e);
     if (id) ownerPick(id);
+    else if (sheetPending) cancelPick(); // แตะที่ว่างตอนยังไม่กดจอง = ยกเลิก
     else if (panelOpen) setPanel(false); // แตะที่ว่าง = ย่อการ์ดเหลือแค่หมุด
   } else if (mode === 'admin') {
     const id = tableAt(e);
@@ -351,13 +454,14 @@ function setPanel(open) {
 }
 
 $('pill').addEventListener('click', () => setPanel(true));
-$('sheet-close').addEventListener('click', () => setPanel(false));
+$('sheet-close').addEventListener('click', () => (sheetPending ? cancelPick() : setPanel(false)));
 $('banner-close').addEventListener('click', () => setPanel(false));
 
 // เริ่มลาก/ซูมแผนที่ = ย่อการ์ดเอง และซ่อนคำแนะนำ
 controls.addEventListener('start', () => {
   $('hint').hidden = true;
-  if (panelOpen && mode !== 'admin') setPanel(false);
+  // ยังไม่ได้กดจอง ปล่อยการ์ดค้างไว้ หมุนดูรอบๆ ก่อนตัดสินใจได้
+  if (panelOpen && mode !== 'admin' && !sheetPending) setPanel(false);
 });
 
 // ---------- ฝั่งเรา: เลือกแล้วแชร์ ----------
@@ -365,30 +469,63 @@ const nameInput = $('name');
 nameInput.value = store.get('torim:name') ?? '';
 nameInput.addEventListener('input', () => store.set('torim:name', nameInput.value.trim()));
 
-function ownerPick(id, open = true) {
-  setSelected(id);
-  store.set('torim:pick', id ? { id, date: today() } : null);
-  if (id) {
-    const t = tableById.get(id);
-    $('sel-id').textContent = id;
-    $('sel-sub').textContent = `${TYPES[t.type]?.name ?? ''} · ${describe(id)}`;
-  }
-  setPanel(!!id && open);
+// แตะโต๊ะ = ดูตัวอย่างก่อน (หมุด + เส้นนำทาง) ต้องกด "จองโต๊ะนี้" ถึงจะจำไว้และแชร์ได้
+let confirmedId = null;
+let sheetPending = false;
+
+function fillSheet(id, pending) {
+  sheetPending = pending;
+  const t = tableById.get(id);
+  $('sel-id').textContent = id;
+  $('sel-sub').textContent = pending && confirmedId
+    ? `เปลี่ยนจากโต๊ะ ${confirmedId} ที่จองไว้`
+    : `${TYPES[t.type]?.name ?? ''} · ${describe(id)}`;
+  $('sheet-confirm').hidden = !pending;
+  $('sheet-share').hidden = pending;
 }
+
+function ownerPick(id) {
+  if (!id) return;
+  setSelected(id);
+  fillSheet(id, id !== confirmedId);
+  setPanel(true);
+}
+
+function confirmPick() {
+  confirmedId = selectedId;
+  store.set('torim:pick', { id: confirmedId, date: today() });
+  fillSheet(confirmedId, false);
+  toast(`จองโต๊ะ ${confirmedId} แล้ว ✓`);
+}
+
+function cancelPick() {
+  sheetPending = false;
+  setSelected(confirmedId);
+  if (confirmedId) fillSheet(confirmedId, false);
+  setPanel(false);
+}
+
+$('pick-ok').addEventListener('click', confirmPick);
+$('pick-cancel').addEventListener('click', cancelPick);
 
 function enterOwner() {
   mode = 'owner';
   history.replaceState(null, '', location.pathname);
   $('adm-enter').hidden = false; // ปุ่มเข้าแอดมินโชว์เฉพาะหน้าปกติ ไม่โชว์ในลิงก์ที่เพื่อนเปิด
   $('hint').hidden = false;
-  $('hint').textContent = 'แตะโต๊ะที่นั่ง แล้วกดแชร์ให้เพื่อน';
-  // จำโต๊ะที่เลือกไว้ของวันนี้ เปิดเว็บใหม่ก็ยังปักหมุดอยู่ (แสดงเป็นป้ายย่อ)
+  $('hint').textContent = 'แตะโต๊ะที่จะนั่ง กดจอง แล้วแชร์ให้เพื่อน';
+  // จำโต๊ะที่จองไว้ของวันนี้ เปิดเว็บใหม่ก็ยังปักหมุดอยู่ (แสดงเป็นป้ายย่อ)
   const last = store.get('torim:pick');
-  ownerPick(last?.date === today() && tableById.has(last.id) ? last.id : null, false);
+  confirmedId = last?.date === today() && tableById.has(last.id) ? last.id : null;
+  cancelPick();
   flyTo(HOME.pos.clone(), HOME.target.clone());
 }
 
-$('clear').addEventListener('click', () => ownerPick(null));
+$('clear').addEventListener('click', () => {
+  confirmedId = null;
+  store.set('torim:pick', null);
+  cancelPick();
+});
 
 let toastTimer;
 function toast(text) {
@@ -434,7 +571,7 @@ const shared = {
 
 function enterFriend() {
   mode = 'friend';
-  $('hint').textContent = 'ลากเพื่อหมุน · ถ่างนิ้วเพื่อซูม';
+  $('hint').textContent = 'เดินตามลูกศรสีฟ้าจากประตูทางเข้า';
   $('ban-id').textContent = shared.id;
 
   const t = tableById.get(shared.id);
@@ -771,6 +908,7 @@ renderer.setAnimationLoop(() => {
   // เลขโต๊ะโชว์เฉพาะตัวที่จอง/เลือกอยู่ (และตัวที่เมาส์ชี้บนคอม) ไม่ให้ลายตา
   for (const t of tableList) t.tag.visible = t.id === selectedId || t.id === hoverId;
 
+  chevrons.offset.x = -((time * 1.2) % 1); // ลูกศรไหลจากประตูไปหาโต๊ะ
   pin.position.y = 2.1 + Math.sin(time * 3) * 0.15;
   pin.rotation.y = time;
   const pulse = (time % 1.5) / 1.5;

@@ -42,11 +42,18 @@
       </div>
       <button id="sheet-close" class="icon" aria-label="ย่อ">✕</button>
     </div>
-    <div class="share-row">
-      <input id="name" maxlength="20" placeholder="ชื่อเรา (ไม่ใส่ก็ได้)" autocomplete="nickname" aria-label="ชื่อที่จะให้เพื่อนเห็น">
-      <button id="share" class="primary">แชร์ให้เพื่อน</button>
+    <!-- แตะโต๊ะใหม่: ยืนยันก่อน ค่อยแชร์ -->
+    <div class="actions" id="sheet-confirm" hidden>
+      <button id="pick-cancel" class="ghost">ยกเลิก</button>
+      <button id="pick-ok" class="primary">✓ จองโต๊ะนี้</button>
     </div>
-    <button id="clear" class="link">ยกเลิกโต๊ะนี้</button>
+    <div class="stack" id="sheet-share">
+      <div class="share-row">
+        <input id="name" maxlength="20" placeholder="ชื่อเรา (ไม่ใส่ก็ได้)" autocomplete="nickname" aria-label="ชื่อที่จะให้เพื่อนเห็น">
+        <button id="share" class="primary">แชร์ให้เพื่อน</button>
+      </div>
+      <button id="clear" class="link">ยกเลิกการจอง</button>
+    </div>
   </section>
 
   <!-- ฝั่งเพื่อน: เปิดจากลิงก์ -->
