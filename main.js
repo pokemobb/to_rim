@@ -211,15 +211,23 @@ function buildTables() {
   people.seat(tableList, selectedId);
 }
 
-// ---------- หมุดปักโต๊ะที่เลือก ----------
-const pinMat = new THREE.MeshStandardMaterial({ color: COLOR.pin, emissive: COLOR.pin, emissiveIntensity: 0.25 });
+// ---------- ป้ายลอยเหนือโต๊ะที่เลือก ----------
+// ก้านบางๆ จากโต๊ะขึ้นไปหาป้าย ป้ายอยู่สูงเหนือโต๊ะ จึงไม่บังตัวโต๊ะ
+const CALLOUT_Y = 2.9;
+const pinMat = new THREE.MeshStandardMaterial({ color: COLOR.pin, emissive: COLOR.pin, emissiveIntensity: 0.3 });
 const pin = new THREE.Group();
-const pinHead = new THREE.Mesh(new THREE.SphereGeometry(0.32, 24, 16), pinMat);
-const pinTip = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.7, 24), pinMat);
-pinTip.rotation.x = Math.PI;
-pinTip.position.y = -0.42;
-pinHead.castShadow = pinTip.castShadow = true;
-pin.add(pinHead, pinTip);
+const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1, 8).translate(0, 0.5, 0), pinMat);
+stem.position.y = 0.82;
+const pinDot = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 10), pinMat);
+pinDot.position.y = 0.84;
+pin.add(stem, pinDot);
+
+const calloutEl = document.createElement('div');
+calloutEl.className = 'callout';
+calloutEl.innerHTML = '<div class="bubble"><span class="callout-dot"></span><span class="callout-text"></span></div>';
+const callout = new CSS2DObject(calloutEl);
+callout.position.y = CALLOUT_Y;
+pin.add(callout);
 
 const ring = new THREE.Mesh(
   new THREE.RingGeometry(1.5, 1.7, 64),
@@ -351,8 +359,9 @@ function flyToTable(t) {
 function flyToRoute(t) {
   if (!entranceDoors.length) return flyToTable(t);
   const door = guidePoints(t)[0];
-  const target = new THREE.Vector3((door.x + t.x) / 2, 0.5, (door.y + t.z) / 2);
-  const d = Math.max(12, Math.hypot(door.x - t.x, door.y - t.z) * 1.1);
+  // เล็งค่อนไปทางโต๊ะ เผื่อที่ให้ป้ายลอยเหนือโต๊ะไม่ชนหัวจอ
+  const target = new THREE.Vector3(door.x + (t.x - door.x) * 0.6, 0.5, door.y + (t.z - door.y) * 0.6);
+  const d = Math.max(13, Math.hypot(door.x - t.x, door.y - t.z) * 1.3);
   flyTo(target.clone().add(new THREE.Vector3(0, d, VIEW * d * 0.7)), target, 1200);
 }
 
@@ -371,7 +380,6 @@ function paint(id) {
   const color = on ? COLOR.tableSelected : id === hoverId ? COLOR.tableHover : COLOR.table;
   topsMesh.setColorAt(t.index, tmpColor.set(color));
   topsMesh.instanceColor.needsUpdate = true;
-  t.tag.element.classList.toggle('active', id === selectedId);
 }
 
 // ไฮไลต์หลายโต๊ะพร้อมกัน (แอดมินเลือกทั้งแถว)
@@ -391,6 +399,8 @@ function setSelected(id) {
   if (t) {
     paint(id);
     marker.position.set(t.x, 0, t.z);
+    const who = mode === 'friend' && shared.name ? `${shared.name} · ` : '';
+    calloutEl.querySelector('.callout-text').textContent = `${who}โต๊ะ ${id}`;
   }
   setGuide(mode === 'admin' ? null : t);
   if (prev !== id && mode !== 'admin') people.seat(tableList, id);
@@ -937,12 +947,15 @@ renderer.setAnimationLoop(() => {
   }
 
   // เลขโต๊ะโชว์เฉพาะตัวที่จอง/เลือกอยู่ (และตัวที่เมาส์ชี้บนคอม) ไม่ให้ลายตา
-  for (const t of tableList) t.tag.visible = t.id === selectedId || t.id === hoverId;
+  // เลขโต๊ะทั่วไปโชว์แค่ตัวที่เมาส์ชี้ (บนคอม) ส่วนตัวที่เลือกใช้ป้ายลอยแทน
+  for (const t of tableList) t.tag.visible = t.id === hoverId && t.id !== selectedId;
+  callout.visible = marker.visible && !!selectedId;
 
   people.update(time);
   chevrons.offset.x = -((time * 1.2) % 1); // ลูกศรไหลจากประตูไปหาโต๊ะ
-  pin.position.y = 2.1 + Math.sin(time * 3) * 0.15;
-  pin.rotation.y = time;
+  const bob = Math.sin(time * 2.2) * 0.12;
+  callout.position.y = CALLOUT_Y + bob;
+  stem.scale.y = CALLOUT_Y + bob - 0.95;
   const pulse = (time % 1.5) / 1.5;
   ring.scale.setScalar(1 + pulse * 0.35);
   ring.material.opacity = 1 - pulse;

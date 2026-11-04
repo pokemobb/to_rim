@@ -276,13 +276,39 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
   white-space: nowrap;
 }
-.tag.active {
+/* ป้ายลอยเหนือโต๊ะที่เลือก: ฟองคำพูดเล็กๆ มีหางชี้ลงไปที่ก้าน
+   (.callout ถูก CSS2DRenderer ตั้ง transform เอง เลยขยับที่ .bubble แทน) */
+.callout { pointer-events: none; }
+.callout .bubble {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transform: translateY(calc(-50% - 8px));
+  padding: 6px 11px 6px 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: #1c1c1e;
+  font: 700 13px/1 var(--font);
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+.callout .bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  margin-left: -6px;
+  border: 6px solid transparent;
+  border-bottom: 0;
+  border-top-color: #fff;
+}
+.callout-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
   background: var(--red);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-  padding: 7px 12px;
-  box-shadow: 0 4px 14px rgba(255, 59, 48, 0.45);
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.2);
 }
 .tag.landmark {
   font-size: 12px;
