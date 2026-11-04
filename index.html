@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>โต๊ะวันนี้</title>
+  <meta name="description" content="ดูว่าเพื่อนนั่งโต๊ะไหนในโรงอาหาร">
+  <meta property="og:title" content="โต๊ะวันนี้ 📍">
+  <meta property="og:description" content="กดดูว่าเรานั่งโต๊ะไหนในโรงอาหาร">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📍</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <header class="card top">
+    <div class="title-row">
+      <div class="title">📍 โต๊ะวันนี้</div>
+      <button id="adm-exit" class="ghost small" hidden>ออกจากแอดมิน</button>
+      <button id="adm-enter" class="ghost small" hidden aria-label="แก้ผังโต๊ะ (แอดมิน)">⚙️ แอดมิน</button>
+    </div>
+    <div class="hint" id="hint"></div>
+  </header>
+
+  <!-- ฝั่งเรา: เลือกโต๊ะแล้วแชร์ -->
+  <section id="sheet" class="card bottom" hidden>
+    <div class="row">
+      <div>
+        <div class="big">โต๊ะ <span id="sel-id"></span></div>
+        <div class="label" id="sel-sub"></div>
+      </div>
+      <button id="sheet-close" class="icon" aria-label="ย่อ">✕</button>
+    </div>
+    <div class="share-row">
+      <input id="name" maxlength="20" placeholder="ชื่อเรา (ไม่ใส่ก็ได้)" autocomplete="nickname" aria-label="ชื่อที่จะให้เพื่อนเห็น">
+      <button id="share" class="primary">แชร์ให้เพื่อน</button>
+    </div>
+    <button id="clear" class="link">ยกเลิกโต๊ะนี้</button>
+  </section>
+
+  <!-- ฝั่งเพื่อน: เปิดจากลิงก์ -->
+  <section id="banner" class="card bottom" hidden>
+    <div class="row">
+      <div>
+        <div class="label" id="ban-who"></div>
+        <div class="big">โต๊ะ <span id="ban-id"></span></div>
+        <div class="label" id="ban-sub"></div>
+      </div>
+      <button id="banner-close" class="icon" aria-label="ย่อ">✕</button>
+    </div>
+    <div class="warn" id="ban-warn" hidden></div>
+    <div class="actions">
+      <button id="focus" class="primary">ไปที่โต๊ะ</button>
+      <button id="own" class="ghost">เลือกโต๊ะของฉันเอง</button>
+    </div>
+  </section>
+
+  <!-- การ์ดที่ย่อแล้ว เหลือป้ายเล็กๆ แตะเพื่อเปิดอีกครั้ง -->
+  <button id="pill" class="pill" hidden><span class="dot"></span><span id="pill-text"></span></button>
+
+  <!-- แอดมิน: เปิดด้วย ?admin -->
+  <section id="admin" class="card bottom" hidden>
+    <div class="label" id="adm-pick">แตะโต๊ะเพื่อเปลี่ยนแบบ หรือแตะช่องว่างเพื่อเพิ่มโต๊ะ</div>
+    <div id="adm-cell" class="stack" hidden>
+      <div class="row">
+        <div>
+          <div class="big" id="adm-title"></div>
+          <div class="label" id="adm-sub"></div>
+        </div>
+        <button id="adm-close" class="icon" aria-label="ปิด">✕</button>
+      </div>
+      <!-- แก้ทีละโต๊ะ หรือทั้งแถวในครั้งเดียว -->
+      <div class="seg3" id="adm-scope">
+        <button class="ghost" data-scope="one">โต๊ะนี้</button>
+        <button class="ghost" data-scope="col"></button>
+        <button class="ghost" data-scope="row"></button>
+      </div>
+      <div class="seg" id="adm-types"></div>
+      <div class="actions" id="adm-table-actions">
+        <button id="adm-rotate" class="ghost">หมุน 90°</button>
+        <button id="adm-delete" class="ghost danger">ลบโต๊ะ</button>
+      </div>
+      <button id="adm-fill" class="ghost" hidden></button>
+    </div>
+    <hr>
+    <div class="label" id="adm-status"></div>
+    <div class="actions" id="adm-confirm" hidden>
+      <button id="adm-cancel" class="ghost">ยกเลิก</button>
+      <button id="adm-ok" class="primary">✓ ตกลง</button>
+    </div>
+    <div class="actions" id="adm-publish">
+      <button id="adm-download" class="primary">ดาวน์โหลด layout.json</button>
+      <button id="adm-reset" class="ghost">ทิ้งที่แก้</button>
+    </div>
+  </section>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,711 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { buildScenery, LABEL_HEIGHT } from './scenery.js';
+
+// แบบโต๊ะที่แอดมินเลือกได้ (หน่วยเมตร) — seats คือตำแหน่งเก้าอี้เทียบกับกลางโต๊ะ
+const TYPES = {
+  long6: {
+    name: 'โต๊ะยาว 6 ที่นั่ง',
+    w: 2.4,
+    d: 1.0,
+    seats: [[-0.8, -0.85], [0, -0.85], [0.8, -0.85], [-0.8, 0.85], [0, 0.85], [0.8, 0.85]],
+  },
+  square4: {
+    name: 'โต๊ะจัตุรัส 4 ที่นั่ง',
+    w: 1.1,
+    d: 1.1,
+    seats: [[0, -0.85], [0, 0.85], [-0.85, 0], [0.85, 0]],
+  },
+};
+
+const COLOR = {
+  bg: 0xdfe8ee,
+  table: 0x2f5d80,
+  tableHover: 0x4c86b3,
+  tableSelected: 0xff4d55,
+  seat: 0xb9c3cf,
+  metal: 0x6b7280,
+  pin: 0xff3b45,
+};
+
+const LABEL_DISTANCE = 32; // ซูมเข้าใกล้กว่านี้ถึงจะโชว์ชื่อโต๊ะทุกตัว
+const VIEW = -1; // มองจากฝั่ง z ติดลบ = ฝั่งประตูคู่ด้านบนที่เดินเข้ามา (เปลี่ยนเป็น 1 ถ้าจะมองจากฝั่งตรงข้าม)
+
+const $ = (id) => document.getElementById(id);
+const today = () => new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD ตามเวลาเครื่อง
+const thaiDate = (iso) => new Date(`${iso}T00:00`).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+
+// localStorage อาจใช้ไม่ได้ (โหมดไม่ระบุตัวตน ฯลฯ) จึงห่อ try/catch ไว้ทุกครั้ง
+const store = {
+  get(key) { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } },
+  set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} },
+};
+
+// ---------- ผังโต๊ะ ----------
+const params = new URLSearchParams(location.search);
+const isAdmin = params.has('admin');
+
+const published = await fetch('layout.json', { cache: 'no-cache' }).then((r) => r.json());
+const layout = structuredClone(published);
+if (isAdmin) {
+  // ผังที่แอดมินแก้ค้างไว้ อยู่แค่ในเครื่องแอดมินจนกว่าจะเอา layout.json ไปแทนใน GitHub
+  const draft = store.get('torim:draft');
+  if (Array.isArray(draft)) layout.tables = draft;
+}
+const { room, grid } = layout;
+
+const tableId = (t) => `${t.col}-${t.row}`;
+const cellPos = (col, row) => ({
+  x: grid.x0 + (col - 1) * grid.colSpacing,
+  z: grid.z0 + (row - 1) * grid.rowSpacing,
+});
+const findTable = (col, row) => layout.tables.find((t) => t.col === col && t.row === row);
+const describe = (id) => {
+  const [col, row] = id.split('-');
+  return `แถว ${col} · ตัวที่ ${row} นับจากประตูทางเข้า`;
+};
+
+// ---------- ฉาก ----------
+const app = $('app');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+app.appendChild(renderer.domElement);
+const canvas = renderer.domElement;
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.domElement.className = 'labels';
+app.appendChild(labelRenderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(COLOR.bg);
+
+const roomW = room.maxX - room.minX;
+const roomD = room.maxZ - room.minZ;
+const center = new THREE.Vector3((room.minX + room.maxX) / 2, 0, (room.minZ + room.maxZ) / 2);
+const span = Math.max(roomW, roomD);
+const portrait = window.innerHeight > window.innerWidth;
+// เลื่อนจุดมองเข้าหาฝั่งทางเข้านิดหน่อย ไม่ให้ประตูกับเลขคอลัมน์จมอยู่ใต้แผงด้านล่าง
+const homeTarget = center.clone().add(new THREE.Vector3(0, 0, VIEW * span * 0.07));
+const HOME = {
+  pos: homeTarget.clone().add(portrait ? new THREE.Vector3(0, span * 0.78, VIEW * span * 0.6) : new THREE.Vector3(0, span * 0.85, VIEW * span * 0.75)),
+  target: homeTarget,
+};
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
+camera.position.copy(HOME.pos);
+
+const controls = new OrbitControls(camera, canvas);
+controls.target.copy(HOME.target);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.45;
+controls.minDistance = 5;
+controls.maxDistance = span * 3;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb8c2cc, 2.2));
+const sun = new THREE.DirectionalLight(0xffffff, 2);
+sun.position.copy(center).add(new THREE.Vector3(15, 40, VIEW * 12));
+sun.target.position.copy(center);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+const reach = span * 0.65;
+Object.assign(sun.shadow.camera, { left: -reach, right: reach, top: reach, bottom: -reach, far: 120 });
+scene.add(sun, sun.target);
+
+function label(text, className) {
+  const el = document.createElement('div');
+  el.className = className;
+  el.textContent = text;
+  return new CSS2DObject(el);
+}
+
+const floor = buildScenery(scene, layout);
+
+const ICON = { shop: '🛒', dishes: '🍽️', toilet: '🚻', door: '🚪' };
+for (const lm of layout.landmarks) {
+  if (!lm.label) continue;
+  const tag = label(`${ICON[lm.kind] ?? ''} ${lm.label}`.trim(), 'tag landmark');
+  tag.position.set(lm.x, LABEL_HEIGHT[lm.kind] ?? (lm.h ?? 1) + 0.4, lm.z);
+  scene.add(tag);
+}
+
+// เลขคอลัมน์หัวแถว เหมือนในผังกระดาษ
+for (let col = 1; col <= grid.cols; col++) {
+  const p = cellPos(col, 1);
+  const tag = label(String(col), 'tag colnum');
+  tag.position.set(p.x, 0.1, p.z - grid.rowSpacing * 0.75);
+  scene.add(tag);
+}
+
+// ---------- โต๊ะ (ใช้ InstancedMesh ให้โต๊ะเป็นร้อยตัวยังลื่นบนมือถือ) ----------
+const unitBox = new THREE.BoxGeometry(1, 1, 1);
+const seatGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.45, 16).translate(0, 0.225, 0);
+const topMat = new THREE.MeshStandardMaterial({ roughness: 0.55 }); // สีแต่ละโต๊ะมาจาก instance color
+const seatMat = new THREE.MeshStandardMaterial({ color: COLOR.seat, roughness: 0.5 });
+const metalMat = new THREE.MeshStandardMaterial({ color: COLOR.metal, metalness: 0.4, roughness: 0.4 });
+const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+
+const tablesGroup = new THREE.Group();
+scene.add(tablesGroup);
+const tableById = new Map();
+let tableList = [];
+let topsMesh;
+let hitMesh;
+
+function buildTables() {
+  for (const child of [...tablesGroup.children]) {
+    tablesGroup.remove(child);
+    if (child.isInstancedMesh) child.dispose();
+  }
+  tableById.clear();
+  hoverId = null;
+
+  tableList = layout.tables.map((t, index) => ({ ...cellPos(t.col, t.row), ...t, id: tableId(t), index }));
+  const seatCount = tableList.reduce((sum, t) => sum + (TYPES[t.type] ?? TYPES.long6).seats.length, 0);
+
+  topsMesh = new THREE.InstancedMesh(unitBox, topMat, tableList.length);
+  hitMesh = new THREE.InstancedMesh(unitBox, hitMat, tableList.length);
+  const legsMesh = new THREE.InstancedMesh(unitBox, metalMat, tableList.length * 2);
+  const seatsMesh = new THREE.InstancedMesh(seatGeo, seatMat, seatCount);
+
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const pos = new THREE.Vector3();
+  const scale = new THREE.Vector3();
+  const offset = new THREE.Vector3();
+  const up = new THREE.Vector3(0, 1, 0);
+  let seatIndex = 0;
+
+  for (const t of tableList) {
+    const type = TYPES[t.type] ?? TYPES.long6;
+    const place = (dx, dz) => offset.set(dx, 0, dz).applyQuaternion(q).add(pos.set(t.x, 0, t.z));
+    q.setFromAxisAngle(up, THREE.MathUtils.degToRad(t.rot ?? 0));
+
+    topsMesh.setMatrixAt(t.index, m.compose(pos.set(t.x, 0.76, t.z), q, scale.set(type.w, 0.08, type.d)));
+    // กล่องล่องหนที่ใหญ่กว่าโต๊ะ ให้แตะบนมือถือได้ง่าย
+    hitMesh.setMatrixAt(t.index, m.compose(pos.set(t.x, 0.6, t.z), q, scale.set(type.w + 0.6, 1.2, type.d + 1.3)));
+    [-1, 1].forEach((side, k) => {
+      const p = place(side * (type.w / 2 - 0.15), 0).setY(0.36);
+      legsMesh.setMatrixAt(t.index * 2 + k, m.compose(p, q, scale.set(0.06, 0.72, type.d * 0.8)));
+    });
+    for (const [sx, sz] of type.seats) {
+      seatsMesh.setMatrixAt(seatIndex++, m.compose(place(sx, sz).clone(), q, scale.set(1, 1, 1)));
+    }
+
+    t.tag = label(t.id, 'tag');
+    t.tag.position.set(t.x, 1.15, t.z);
+    tablesGroup.add(t.tag);
+    tableById.set(t.id, t);
+  }
+
+  for (const mesh of [topsMesh, legsMesh, seatsMesh, hitMesh]) {
+    mesh.castShadow = mesh.receiveShadow = mesh !== hitMesh;
+    mesh.frustumCulled = false;
+    tablesGroup.add(mesh);
+  }
+  for (const t of tableList) paint(t.id);
+}
+
+// ---------- หมุดปักโต๊ะที่เลือก ----------
+const pinMat = new THREE.MeshStandardMaterial({ color: COLOR.pin, emissive: COLOR.pin, emissiveIntensity: 0.25 });
+const pin = new THREE.Group();
+const pinHead = new THREE.Mesh(new THREE.SphereGeometry(0.32, 24, 16), pinMat);
+const pinTip = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.7, 24), pinMat);
+pinTip.rotation.x = Math.PI;
+pinTip.position.y = -0.42;
+pinHead.castShadow = pinTip.castShadow = true;
+pin.add(pinHead, pinTip);
+
+const ring = new THREE.Mesh(
+  new THREE.RingGeometry(1.5, 1.7, 64),
+  new THREE.MeshBasicMaterial({ color: COLOR.pin, transparent: true, side: THREE.DoubleSide }),
+);
+ring.rotation.x = -Math.PI / 2;
+ring.position.y = 0.02;
+
+const marker = new THREE.Group();
+marker.add(pin, ring);
+marker.visible = false;
+scene.add(marker);
+
+// ---------- กล้องบินไปหาโต๊ะ ----------
+let flight = null;
+const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+
+function flyTo(pos, target, ms = 1000) {
+  flight = { fromPos: camera.position.clone(), fromTarget: controls.target.clone(), pos, target, start: performance.now(), ms };
+}
+
+function flyToTable(t) {
+  const target = new THREE.Vector3(t.x, 0.7, t.z);
+  flyTo(target.clone().add(new THREE.Vector3(0, 14, VIEW * 15)), target);
+}
+
+controls.addEventListener('start', () => { flight = null; });
+
+// ---------- การเลือกโต๊ะ ----------
+let mode = 'owner';
+let selectedId = null;
+let hoverId = null;
+const tmpColor = new THREE.Color();
+
+function paint(id) {
+  const t = tableById.get(id);
+  if (!t) return;
+  const on = id === selectedId || highlighted.has(id);
+  const color = on ? COLOR.tableSelected : id === hoverId ? COLOR.tableHover : COLOR.table;
+  topsMesh.setColorAt(t.index, tmpColor.set(color));
+  topsMesh.instanceColor.needsUpdate = true;
+  t.tag.element.classList.toggle('active', id === selectedId);
+}
+
+// ไฮไลต์หลายโต๊ะพร้อมกัน (แอดมินเลือกทั้งแถว)
+let highlighted = new Set();
+function setHighlight(ids) {
+  const prev = highlighted;
+  highlighted = new Set(ids);
+  for (const id of new Set([...prev, ...highlighted])) paint(id);
+}
+
+function setSelected(id) {
+  const prev = selectedId;
+  selectedId = id;
+  if (prev) paint(prev);
+  const t = tableById.get(id);
+  marker.visible = !!t;
+  if (t) {
+    paint(id);
+    marker.position.set(t.x, 0, t.z);
+  }
+}
+
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+
+function aim(e) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+}
+
+function tableAt(e) {
+  aim(e);
+  const hit = raycaster.intersectObject(hitMesh, false)[0];
+  return hit ? tableList[hit.instanceId].id : null;
+}
+
+function cellAt(e) {
+  aim(e);
+  const point = raycaster.intersectObject(floor, false)[0]?.point;
+  if (!point) return null;
+  const col = Math.round((point.x - grid.x0) / grid.colSpacing) + 1;
+  const row = Math.round((point.z - grid.z0) / grid.rowSpacing) + 1;
+  if (col < 1 || row < 1 || col > grid.cols || row > grid.rows) return null;
+  return { col, row };
+}
+
+// แยก "แตะ" ออกจาก "ลากหมุนกล้อง" ด้วยระยะที่นิ้วขยับ
+let downAt = null;
+canvas.addEventListener('pointerdown', (e) => { downAt = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener('pointerup', (e) => {
+  if (!downAt) return;
+  const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
+  downAt = null;
+  if (moved > 6) return;
+  if (mode === 'owner') {
+    const id = tableAt(e);
+    if (id) ownerPick(id);
+    else if (panelOpen) setPanel(false); // แตะที่ว่าง = ย่อการ์ดเหลือแค่หมุด
+  } else if (mode === 'admin') {
+    const id = tableAt(e);
+    adminSel = id ? tableById.get(id) : cellAt(e);
+    renderAdmin();
+  }
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (e.pointerType !== 'mouse' || mode === 'friend' || e.buttons) return;
+  const id = tableAt(e);
+  if (id === hoverId) return;
+  const prev = hoverId;
+  hoverId = id;
+  if (prev) paint(prev);
+  if (id) paint(id);
+  canvas.style.cursor = id || mode === 'admin' ? 'pointer' : '';
+});
+
+// ---------- แผงด้านล่าง: เปิดเป็นการ์ด หรือย่อเหลือป้ายเล็กให้เห็นหมุดเต็มจอ ----------
+let panelOpen = false;
+let pillText = '';
+let collapseTimer;
+
+function setPanel(open) {
+  clearTimeout(collapseTimer);
+  panelOpen = open;
+  const active = mode === 'friend' || (mode === 'owner' && !!selectedId);
+  $('sheet').hidden = !(mode === 'owner' && active && open);
+  $('banner').hidden = !(mode === 'friend' && open);
+  $('pill').hidden = !active || open;
+  $('pill-text').textContent = mode === 'owner' ? `โต๊ะ ${selectedId} · แตะเพื่อแชร์` : pillText;
+}
+
+$('pill').addEventListener('click', () => setPanel(true));
+$('sheet-close').addEventListener('click', () => setPanel(false));
+$('banner-close').addEventListener('click', () => setPanel(false));
+
+// เริ่มลาก/ซูมแผนที่ = ย่อการ์ดเอง และซ่อนคำแนะนำ
+controls.addEventListener('start', () => {
+  $('hint').hidden = true;
+  if (panelOpen && mode !== 'admin') setPanel(false);
+});
+
+// ---------- ฝั่งเรา: เลือกแล้วแชร์ ----------
+const nameInput = $('name');
+nameInput.value = store.get('torim:name') ?? '';
+nameInput.addEventListener('input', () => store.set('torim:name', nameInput.value.trim()));
+
+function ownerPick(id, open = true) {
+  setSelected(id);
+  store.set('torim:pick', id ? { id, date: today() } : null);
+  if (id) {
+    const t = tableById.get(id);
+    $('sel-id').textContent = id;
+    $('sel-sub').textContent = `${TYPES[t.type]?.name ?? ''} · ${describe(id)}`;
+  }
+  setPanel(!!id && open);
+}
+
+function enterOwner() {
+  mode = 'owner';
+  history.replaceState(null, '', location.pathname);
+  $('adm-enter').hidden = false; // ปุ่มเข้าแอดมินโชว์เฉพาะหน้าปกติ ไม่โชว์ในลิงก์ที่เพื่อนเปิด
+  $('hint').hidden = false;
+  $('hint').textContent = 'แตะโต๊ะที่นั่ง แล้วกดแชร์ให้เพื่อน';
+  // จำโต๊ะที่เลือกไว้ของวันนี้ เปิดเว็บใหม่ก็ยังปักหมุดอยู่ (แสดงเป็นป้ายย่อ)
+  const last = store.get('torim:pick');
+  ownerPick(last?.date === today() && tableById.has(last.id) ? last.id : null, false);
+  flyTo(HOME.pos.clone(), HOME.target.clone());
+}
+
+$('clear').addEventListener('click', () => ownerPick(null));
+
+let toastTimer;
+function toast(text) {
+  const el = $('toast');
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 2500);
+}
+
+$('share').addEventListener('click', async () => {
+  const name = nameInput.value.trim();
+  const url = new URL(location.pathname, location.origin);
+  url.searchParams.set('t', selectedId);
+  url.searchParams.set('d', today());
+  if (name) url.searchParams.set('n', name);
+  const text = `${name || 'เรา'}นั่งโต๊ะ ${selectedId} ที่โรงอาหาร 📍`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'โต๊ะวันนี้', text, url: url.href });
+      setPanel(false);
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(`${text}\n${url.href}`);
+    toast('คัดลอกลิงก์แล้ว ส่งให้เพื่อนได้เลย');
+  } catch {
+    window.prompt('คัดลอกลิงก์นี้ส่งให้เพื่อน', url.href);
+  }
+  setPanel(false);
+});
+
+// ---------- ฝั่งเพื่อน: เปิดจากลิงก์ ----------
+const shared = {
+  id: params.get('t'),
+  date: /^\d{4}-\d{2}-\d{2}$/.test(params.get('d') ?? '') ? params.get('d') : null,
+  name: (params.get('n') ?? '').trim().slice(0, 30),
+};
+
+function enterFriend() {
+  mode = 'friend';
+  $('hint').textContent = 'ลากเพื่อหมุน · ถ่างนิ้วเพื่อซูม';
+  $('ban-id').textContent = shared.id;
+
+  const t = tableById.get(shared.id);
+  if (!t) {
+    $('ban-who').textContent = 'ไม่พบโต๊ะนี้ในผัง';
+    $('focus').hidden = true;
+    pillText = `ไม่พบโต๊ะ ${shared.id}`;
+    setPanel(true);
+    return;
+  }
+  const who = shared.name || 'เพื่อน';
+  const stale = !!shared.date && shared.date !== today();
+  $('ban-who').textContent = `${who}นั่งที่`;
+  $('ban-sub').textContent = describe(t.id);
+  if (stale) {
+    $('ban-warn').textContent = `ลิงก์นี้ส่งมาเมื่อ ${thaiDate(shared.date)} อาจไม่ใช่โต๊ะของวันนี้`;
+    $('ban-warn').hidden = false;
+  }
+  pillText = `${who} · โต๊ะ ${t.id}${stale ? ' ⚠️' : ''}`;
+  setSelected(t.id);
+  setPanel(true);
+  setTimeout(() => flyToTable(t), 500);
+  // ดูชื่อโต๊ะแล้ว ย่อการ์ดเองให้เห็นหมุดชัดๆ (ถ้าลิงก์เก่า ปล่อยค้างไว้ให้อ่านคำเตือน)
+  if (!stale) collapseTimer = setTimeout(() => setPanel(false), 4000);
+}
+
+$('focus').addEventListener('click', () => {
+  const t = tableById.get(selectedId);
+  if (t) flyToTable(t);
+});
+$('own').addEventListener('click', enterOwner);
+
+// ---------- โหมดแอดมิน (?admin): เปลี่ยนแบบโต๊ะ เพิ่ม/ลบ แล้วดาวน์โหลด layout.json ----------
+let adminSel = null; // { col, row } ของโต๊ะหรือช่องว่างที่แตะ
+let adminScope = 'one'; // 'one' = โต๊ะนี้, 'col' = ทั้งแถว (ตามเลขหัวแถว), 'row' = ตัวที่ N ของทุกแถว
+
+const signature = (tables) => JSON.stringify(
+  tables.map((t) => [t.row, t.col, t.type, t.rot ?? 0]).sort((a, b) => a[0] - b[0] || a[1] - b[1]),
+);
+
+// ช่องทั้งหมดที่กำลังแก้ ตามขอบเขตที่เลือก
+function scopeCells() {
+  if (!adminSel) return [];
+  const { col, row } = adminSel;
+  if (adminScope === 'col') return Array.from({ length: grid.rows }, (_, i) => ({ col, row: i + 1 }));
+  if (adminScope === 'row') return Array.from({ length: grid.cols }, (_, i) => ({ col: i + 1, row }));
+  return [{ col, row }];
+}
+const scopeTables = () => scopeCells().map((c) => findTable(c.col, c.row)).filter(Boolean);
+const scopeEmpty = () => scopeCells().filter((c) => !findTable(c.col, c.row));
+const isSquare = (t) => TYPES[t.type].w === TYPES[t.type].d;
+
+for (const btn of $('adm-scope').children) {
+  btn.addEventListener('click', () => {
+    adminScope = btn.dataset.scope;
+    renderAdmin();
+  });
+}
+
+const typeButtons = Object.keys(TYPES).map((type) => {
+  const btn = document.createElement('button');
+  btn.className = 'ghost';
+  btn.dataset.type = type;
+  btn.addEventListener('click', () => {
+    const tables = scopeTables();
+    // มีโต๊ะอยู่แล้ว = เปลี่ยนแบบทุกตัว, ว่างทั้งหมด = วางโต๊ะใหม่ทุกช่อง
+    if (tables.length) {
+      for (const t of tables) {
+        t.type = type;
+        if (isSquare(t)) delete t.rot;
+      }
+    } else {
+      for (const c of scopeCells()) layout.tables.push({ ...c, type });
+    }
+    commit();
+  });
+  $('adm-types').appendChild(btn);
+  return btn;
+});
+
+$('adm-fill').addEventListener('click', () => {
+  const type = scopeTables()[0]?.type ?? 'long6';
+  for (const c of scopeEmpty()) layout.tables.push({ ...c, type });
+  commit();
+});
+
+// ทุกการแก้เป็นแค่ "ดูตัวอย่าง" ก่อน ต้องกดตกลงถึงจะบันทึก (saved = สถานะล่าสุดที่กดตกลงแล้ว)
+let saved = structuredClone(layout.tables);
+const isPending = () => signature(layout.tables) !== signature(saved);
+
+function commit() {
+  buildTables();
+  renderAdmin();
+}
+
+$('adm-ok').addEventListener('click', () => {
+  saved = structuredClone(layout.tables);
+  store.set('torim:draft', saved);
+  adminSel = null;
+  renderAdmin();
+  toast('บันทึกแล้ว ✓');
+});
+
+$('adm-cancel').addEventListener('click', () => {
+  layout.tables = structuredClone(saved);
+  buildTables();
+  renderAdmin();
+});
+
+function renderAdmin() {
+  $('adm-pick').hidden = !!adminSel;
+  $('adm-cell').hidden = !adminSel;
+  setSelected(null);
+  setHighlight([]);
+
+  if (adminSel) {
+    const { col, row } = adminSel;
+    const tables = scopeTables();
+    const empty = scopeEmpty();
+    const n = tables.length;
+
+    for (const btn of $('adm-scope').children) btn.classList.toggle('on', btn.dataset.scope === adminScope);
+    $('adm-scope').children[1].textContent = `ทั้งแถว ${col}`;
+    $('adm-scope').children[2].textContent = `ตัวที่ ${row} ทุกแถว`;
+
+    if (adminScope === 'one') {
+      $('adm-title').textContent = n ? `โต๊ะ ${tableId(adminSel)}` : `ช่อง ${tableId(adminSel)} (ว่าง)`;
+      $('adm-sub').textContent = n ? TYPES[tables[0].type].name : 'เลือกแบบโต๊ะเพื่อวางลงช่องนี้';
+    } else {
+      $('adm-title').textContent = adminScope === 'col' ? `แถว ${col}` : `ตัวที่ ${row} ของทุกแถว`;
+      $('adm-sub').textContent = `${n} โต๊ะ${empty.length ? ` · ช่องว่าง ${empty.length}` : ''} · กดทีเดียวแก้ทั้งหมด`;
+    }
+
+    for (const btn of typeButtons) {
+      btn.textContent = `${n ? '' : '+ '}${TYPES[btn.dataset.type].name}`;
+      btn.classList.toggle('on', n > 0 && tables.every((t) => t.type === btn.dataset.type));
+    }
+    $('adm-table-actions').hidden = !n;
+    $('adm-rotate').hidden = !tables.some((t) => !isSquare(t));
+    $('adm-delete').textContent = n > 1 ? `ลบ ${n} โต๊ะ` : 'ลบโต๊ะ';
+    $('adm-fill').hidden = adminScope === 'one' || !n || !empty.length;
+    $('adm-fill').textContent = `+ เติมโต๊ะในช่องว่าง ${empty.length} ช่อง`;
+
+    if (adminScope === 'one') {
+      const p = cellPos(col, row);
+      if (n) setSelected(tableId(adminSel));
+      marker.position.set(p.x, 0, p.z);
+      marker.visible = true;
+    } else {
+      setHighlight(tables.map((t) => tableId(t)));
+    }
+  }
+
+  const pending = isPending();
+  $('adm-confirm').hidden = !pending;
+  $('adm-publish').hidden = pending;
+  $('adm-close').hidden = pending; // มีของค้างอยู่ ต้องเลือกตกลงหรือยกเลิกก่อน
+  if (pending) {
+    $('adm-status').textContent = 'ยังไม่ได้บันทึก — กด "ตกลง" เพื่อบันทึก หรือ "ยกเลิก" เพื่อย้อนกลับ';
+    return;
+  }
+
+  const dirty = signature(layout.tables) !== signature(published.tables);
+  $('adm-status').textContent = dirty
+    ? 'มีการแก้ไขที่ยังไม่เผยแพร่ — กดดาวน์โหลด แล้วเอาไฟล์ไปแทน layout.json ใน GitHub'
+    : 'ตรงกับผังที่เผยแพร่อยู่ตอนนี้';
+  $('adm-download').disabled = !dirty;
+  $('adm-reset').disabled = !dirty;
+}
+
+$('adm-close').addEventListener('click', () => { adminSel = null; renderAdmin(); });
+
+$('adm-rotate').addEventListener('click', () => {
+  const tables = scopeTables().filter((t) => !isSquare(t));
+  const rotate = !tables[0]?.rot; // ยึดตัวแรกเป็นหลัก ให้ทั้งแถวหันเหมือนกัน
+  for (const t of tables) {
+    if (rotate) t.rot = 90;
+    else delete t.rot;
+  }
+  commit();
+});
+
+$('adm-delete').addEventListener('click', () => {
+  const doomed = new Set(scopeTables());
+  if (doomed.size > 1 && !window.confirm(`ลบ ${doomed.size} โต๊ะ?`)) return;
+  layout.tables = layout.tables.filter((t) => !doomed.has(t));
+  commit();
+});
+
+// ออกจากโหมดแอดมิน: ที่แก้ค้างไว้ยังเก็บในเครื่อง เปิด ?admin ครั้งหน้าก็ทำต่อได้
+$('adm-exit').addEventListener('click', () => {
+  if (isPending() && !window.confirm('ยังไม่ได้กด "ตกลง" ออกเลยไหม? (ที่แก้ล่าสุดจะหาย)')) return;
+  location.href = location.pathname;
+});
+$('adm-enter').addEventListener('click', () => {
+  location.href = `${location.pathname}?admin`;
+});
+
+$('adm-reset').addEventListener('click', () => {
+  if (!window.confirm('ทิ้งการแก้ไขทั้งหมด แล้วกลับไปใช้ผังที่เผยแพร่อยู่?')) return;
+  layout.tables = structuredClone(published.tables);
+  saved = structuredClone(published.tables);
+  store.set('torim:draft', null);
+  buildTables();
+  renderAdmin();
+});
+
+// เขียน JSON ให้อ่านง่าย: object ที่ไม่มีอะไรซ้อนข้างในอยู่บรรทัดเดียว
+const toJson = (data) => JSON.stringify(data, null, 2)
+  .replace(/\{\n\s+([^{}[\]]*?)\n\s+\}/g, (_, body) => `{ ${body.replace(/,\n\s+/g, ', ')} }`);
+
+$('adm-download').addEventListener('click', () => {
+  const tables = [...layout.tables].sort((a, b) => a.row - b.row || a.col - b.col);
+  const blob = new Blob([`${toJson({ ...published, tables })}\n`], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'layout.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+function enterAdmin() {
+  mode = 'admin';
+  document.querySelector('.title').textContent = '🛠️ แก้ผังโต๊ะ (แอดมิน)';
+  $('hint').textContent = 'แตะโต๊ะเพื่อเปลี่ยนแบบ · แตะช่องว่างเพื่อเพิ่มโต๊ะ';
+  $('admin').hidden = false;
+  $('adm-exit').hidden = false;
+  setPanel(false);
+  renderAdmin();
+}
+
+// ---------- เริ่ม ----------
+buildTables();
+if (isAdmin) enterAdmin();
+else if (shared.id) enterFriend();
+else enterOwner();
+
+function resize() {
+  const w = app.clientWidth;
+  const h = app.clientHeight;
+  renderer.setSize(w, h);
+  labelRenderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const time = clock.getElapsedTime();
+
+  if (flight) {
+    const k = Math.min(1, (performance.now() - flight.start) / flight.ms);
+    const e = ease(k);
+    camera.position.lerpVectors(flight.fromPos, flight.pos, e);
+    controls.target.lerpVectors(flight.fromTarget, flight.target, e);
+    if (k === 1) flight = null;
+  }
+
+  // ป้ายชื่อโต๊ะโชว์เฉพาะตอนซูมเข้า (ไม่งั้นเต็มจอ) ยกเว้นโต๊ะที่เลือกกับโหมดแอดมิน
+  const near = mode === 'admin' || camera.position.distanceTo(controls.target) < LABEL_DISTANCE;
+  for (const t of tableList) t.tag.visible = near || t.id === selectedId;
+
+  pin.position.y = 2.1 + Math.sin(time * 3) * 0.15;
+  pin.rotation.y = time;
+  const pulse = (time % 1.5) / 1.5;
+  ring.scale.setScalar(1 + pulse * 0.35);
+  ring.material.opacity = 1 - pulse;
+
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+});

@@ -1,0 +1,205 @@
+:root {
+  --font: 'Noto Sans Thai', system-ui, sans-serif;
+  --bg: #e8edf2;
+  --card: rgba(255, 255, 255, 0.94);
+  --text: #1e293b;
+  --muted: #64748b;
+  --line: #dbe2ea;
+  --accent: #ff4d55;
+  --accent-text: #fff;
+  --warn-bg: #fff4e0;
+  --warn-text: #8a5a00;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --card: rgba(22, 28, 38, 0.94);
+    --text: #e8edf3;
+    --muted: #9aa8ba;
+    --line: #2f3a4a;
+    --warn-bg: #3a2c12;
+    --warn-text: #ffd48a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app { position: fixed; inset: 0; }
+#app canvas { display: block; touch-action: none; }
+.labels { position: absolute; inset: 0; pointer-events: none; }
+
+.card {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  max-width: 420px;
+  background: var(--card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.14);
+  padding: 14px 16px;
+}
+
+.top {
+  top: calc(12px + env(safe-area-inset-top));
+  right: auto;
+  max-width: calc(100% - 32px);
+  padding: 10px 14px;
+}
+.bottom {
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  margin: 0 auto;
+  display: grid;
+  gap: 12px;
+}
+
+[hidden] { display: none !important; }
+
+.title { font-weight: 700; font-size: 16px; }
+.hint { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.label { color: var(--muted); font-size: 13px; }
+.big { font-weight: 700; font-size: 26px; line-height: 1.2; }
+.big span { color: var(--accent); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.share-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.share-row input {
+  font: inherit;
+  font-size: 16px; /* ต่ำกว่า 16px แล้ว iPhone จะซูมหน้าเองตอนแตะช่อง */
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+.share-row input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+.icon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--muted);
+  font-size: 14px;
+  align-self: flex-start;
+}
+.link {
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+  text-decoration: underline;
+  justify-self: center;
+}
+
+.pill {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.18);
+  white-space: nowrap;
+}
+.pill span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.pill .dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(255, 77, 85, 0.2);
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 0;
+  cursor: pointer;
+}
+.primary { background: var(--accent); color: var(--accent-text); }
+.primary:active { filter: brightness(0.92); }
+button:disabled { opacity: 0.45; cursor: default; }
+.danger { color: #d93a42; }
+
+.stack { display: grid; gap: 10px; }
+.title-row { display: flex; align-items: center; gap: 12px; }
+button.small { font-size: 13px; padding: 6px 10px; border-radius: 999px; }
+.seg3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: 12px; background: var(--line); }
+.seg3 button { border: 0; font-size: 13px; padding: 8px 4px; border-radius: 9px; }
+.seg3 button.on { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(15, 23, 42, 0.15); }
+.seg3 button:not(.on) { color: var(--muted); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg button { font-size: 14px; padding: 10px 8px; }
+.seg button.on { background: var(--accent); color: var(--accent-text); border-color: transparent; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 0; width: 100%; }
+.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+
+.warn {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  top: calc(96px + env(safe-area-inset-top));
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #fff;
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ป้ายลอยในฉาก 3D (CSS2DRenderer ใช้ transform ของ element เอง จึงห้ามตั้ง transform ที่ .tag) */
+.tag {
+  font: 600 12px/1 var(--font);
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #334155;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+}
+.tag.active { background: var(--accent); color: #fff; font-size: 15px; padding: 6px 11px; }
+.tag.landmark { background: #1e293b; color: #fff; padding: 5px 9px; }
+.tag.colnum { background: transparent; box-shadow: none; color: #1e293b; font-size: 16px; font-weight: 700; }
+
+@media (max-width: 480px) {
+  .big { font-size: 22px; }
+  .tag { font-size: 11px; padding: 3px 6px; }
+  .tag.landmark { font-size: 11px; padding: 4px 7px; }
+  .tag.colnum { font-size: 13px; }
+}
