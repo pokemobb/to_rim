@@ -344,6 +344,15 @@ function flyToTable(t) {
   flyTo(target.clone().add(new THREE.Vector3(0, 14, VIEW * 15)), target);
 }
 
+// มุมกว้างพอให้เห็นทั้งเส้นทางจากประตูถึงโต๊ะ
+function flyToRoute(t) {
+  if (!entranceDoors.length) return flyToTable(t);
+  const door = guidePoints(t)[0];
+  const target = new THREE.Vector3((door.x + t.x) / 2, 0.5, (door.y + t.z) / 2);
+  const d = Math.max(12, Math.hypot(door.x - t.x, door.y - t.z) * 1.1);
+  flyTo(target.clone().add(new THREE.Vector3(0, d, VIEW * d * 0.7)), target, 1200);
+}
+
 controls.addEventListener('start', () => { flight = null; });
 
 // ---------- การเลือกโต๊ะ ----------
@@ -536,12 +545,25 @@ function toast(text) {
   toastTimer = setTimeout(() => { el.hidden = true; }, 2500);
 }
 
-$('share').addEventListener('click', async () => {
+function shareUrl() {
   const name = nameInput.value.trim();
   const url = new URL(location.pathname, location.origin);
   url.searchParams.set('t', selectedId);
   url.searchParams.set('d', today());
   if (name) url.searchParams.set('n', name);
+  return url;
+}
+
+// เปิดลิงก์เดียวกับที่ส่งให้เพื่อน ดูว่าเพื่อนจะเห็นอะไร (มีปุ่มกลับ)
+$('preview').addEventListener('click', () => {
+  const url = shareUrl();
+  url.searchParams.set('preview', '1');
+  location.href = url.href;
+});
+
+$('share').addEventListener('click', async () => {
+  const name = nameInput.value.trim();
+  const url = shareUrl();
   const text = `${name || 'เรา'}นั่งโต๊ะ ${selectedId} ที่โรงอาหาร 📍`;
 
   if (navigator.share) {
@@ -572,6 +594,10 @@ const shared = {
 function enterFriend() {
   mode = 'friend';
   $('hint').textContent = 'เดินตามลูกศรสีฟ้าจากประตูทางเข้า';
+  if (params.has('preview')) {
+    $('hint').textContent = '👀 ตัวอย่าง: นี่คือหน้าที่เพื่อนจะเห็น';
+    $('own').textContent = '← กลับ';
+  }
   $('ban-id').textContent = shared.id;
 
   const t = tableById.get(shared.id);
@@ -593,7 +619,7 @@ function enterFriend() {
   pillText = `${who} · โต๊ะ ${t.id}${stale ? ' ⚠️' : ''}`;
   setSelected(t.id);
   setPanel(true);
-  setTimeout(() => flyToTable(t), 500);
+  setTimeout(() => flyToRoute(t), 500);
   // ดูชื่อโต๊ะแล้ว ย่อการ์ดเองให้เห็นหมุดชัดๆ (ถ้าลิงก์เก่า ปล่อยค้างไว้ให้อ่านคำเตือน)
   if (!stale) collapseTimer = setTimeout(() => setPanel(false), 4000);
 }
