@@ -91,8 +91,12 @@ const span = Math.max(roomW, roomD);
 const portrait = window.innerHeight > window.innerWidth;
 // เลื่อนจุดมองเข้าหาฝั่งทางเข้านิดหน่อย ไม่ให้ประตูกับเลขคอลัมน์จมอยู่ใต้แผงด้านล่าง
 const homeTarget = center.clone().add(new THREE.Vector3(0, 0, VIEW * span * 0.07));
+// มุมกล้องตายตัว: มองจากด้านบน เอียงมาทางประตูทางเข้า 40° (ลากได้แค่เลื่อนกับซูม ไม่หมุน)
+const TILT = THREE.MathUtils.degToRad(40);
+const VIEW_DIR = new THREE.Vector3(0, Math.cos(TILT), VIEW * Math.sin(TILT));
+const viewFrom = (target, distance) => target.clone().addScaledVector(VIEW_DIR, distance);
 const HOME = {
-  pos: homeTarget.clone().add(portrait ? new THREE.Vector3(0, span * 0.78, VIEW * span * 0.6) : new THREE.Vector3(0, span * 0.85, VIEW * span * 0.75)),
+  pos: viewFrom(homeTarget, span * (portrait ? 0.98 : 1.13)),
   target: homeTarget,
 };
 
@@ -102,9 +106,27 @@ camera.position.copy(HOME.pos);
 const controls = new OrbitControls(camera, canvas);
 controls.target.copy(HOME.target);
 controls.enableDamping = true;
-controls.maxPolarAngle = Math.PI * 0.45;
-controls.minDistance = 5;
-controls.maxDistance = span * 3;
+controls.enableRotate = false;
+controls.minPolarAngle = controls.maxPolarAngle = TILT;
+controls.screenSpacePanning = false; // เลื่อนไปตามพื้น ไม่ใช่ตามจอ
+controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN };
+controls.minDistance = 6;
+controls.maxDistance = span * 1.6;
+
+// ไม่ให้เลื่อนหลุดออกนอกโรงอาหาร
+const panShift = new THREE.Vector3();
+function keepInRoom() {
+  const t = controls.target;
+  panShift.set(
+    THREE.MathUtils.clamp(t.x, room.minX, room.maxX) - t.x,
+    0,
+    THREE.MathUtils.clamp(t.z, room.minZ, room.maxZ) - t.z,
+  );
+  if (panShift.lengthSq() === 0) return;
+  t.add(panShift);
+  camera.position.add(panShift);
+}
 
 scene.add(new THREE.HemisphereLight(0xffffff, 0xb8c2cc, 2.2));
 const sun = new THREE.DirectionalLight(0xffffff, 2);
@@ -353,7 +375,7 @@ function flyTo(pos, target, ms = 1000) {
 
 function flyToTable(t) {
   const target = new THREE.Vector3(t.x, 0.7, t.z);
-  flyTo(target.clone().add(new THREE.Vector3(0, 14, VIEW * 15)), target);
+  flyTo(viewFrom(target, 20), target);
 }
 
 // มุมกว้างพอให้เห็นทั้งเส้นทางจากประตูถึงโต๊ะ
@@ -363,7 +385,7 @@ function flyToRoute(t) {
   // เล็งค่อนไปทางโต๊ะ เผื่อที่ให้ป้ายลอยเหนือโต๊ะไม่ชนหัวจอ
   const target = new THREE.Vector3(door.x + (t.x - door.x) * 0.6, 0.5, door.y + (t.z - door.y) * 0.6);
   const d = Math.max(13, Math.hypot(door.x - t.x, door.y - t.z) * 1.3);
-  flyTo(target.clone().add(new THREE.Vector3(0, d, VIEW * d * 0.7)), target, 1200);
+  flyTo(viewFrom(target, d * 1.22), target, 1200);
 }
 
 controls.addEventListener('start', () => { flight = null; });
@@ -442,7 +464,7 @@ function cellAt(e) {
   return { col, row };
 }
 
-// แยก "แตะ" ออกจาก "ลากหมุนกล้อง" ด้วยระยะที่นิ้วขยับ
+// แยก "แตะ" ออกจาก "ลากเลื่อนแผนที่" ด้วยระยะที่นิ้วขยับ
 let downAt = null;
 canvas.addEventListener('pointerdown', (e) => { downAt = { x: e.clientX, y: e.clientY }; });
 canvas.addEventListener('pointerup', (e) => {
@@ -494,7 +516,7 @@ $('banner-close').addEventListener('click', () => setPanel(false));
 // เริ่มลาก/ซูมแผนที่ = ย่อการ์ดเอง และซ่อนคำแนะนำ
 controls.addEventListener('start', () => {
   $('hint').hidden = true;
-  // ยังไม่ได้กดจอง ปล่อยการ์ดค้างไว้ หมุนดูรอบๆ ก่อนตัดสินใจได้
+  // ยังไม่ได้กดจอง ปล่อยการ์ดค้างไว้ เลื่อนดูรอบๆ ก่อนตัดสินใจได้
   if (panelOpen && mode !== 'admin' && !sheetPending) setPanel(false);
 });
 
@@ -972,6 +994,7 @@ renderer.setAnimationLoop(() => {
   ring.material.opacity = 1 - pulse;
 
   controls.update();
+  keepInRoom();
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
 });
