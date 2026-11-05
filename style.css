@@ -784,3 +784,8 @@ body.mascot-on #hint { display: none; }
   color: #fff;
   font-size: 17px; font-weight: 600;
 }
+
+/* ---------- ยกแถบแท็บและปุ่มล่างให้ห่างขอบจอ กดง่ายขึ้น (แผนที่จะเล็กลงเองตามความสูงแถบ) ---------- */
+.tabbar { padding: 2px 16px max(22px, calc(env(safe-area-inset-bottom) + 10px)); }
+.tab { min-height: 46px; font-size: 14px; }
+.photo-view { padding-bottom: max(28px, calc(env(safe-area-inset-bottom) + 14px)); }
