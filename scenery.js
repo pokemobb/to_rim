@@ -236,6 +236,109 @@ function plant() {
 
 const BUILDERS = { shop, dishes, toilet, door, plant };
 
+// ---------- รอบนอกอาคาร: ทางเดินออกจากประตู ต้นไม้ และพุ่มไม้ ----------
+// ใช้ InstancedMesh ทั้งหมด (ต้นไม้เป็นร้อยต้นก็ยังลื่นบนมือถือ)
+function outdoor(scene, layout) {
+  const { room } = layout;
+  const cutouts = room.cutouts ?? [];
+  const doors = layout.landmarks.filter((l) => l.kind === 'door');
+  const near = (a, b) => Math.abs(a - b) < 0.5;
+  const LEN = 16; // ทางเดินยาวออกไปจากประตู
+
+  // ทางเดินคอนกรีตจากประตูทุกบานที่อยู่บนขอบอาคาร
+  const paths = [];
+  for (const d of doors) {
+    const w = Math.max(d.w, d.d) + 1.2;
+    if (near(d.x, room.minX)) paths.push({ x0: room.minX - LEN, x1: room.minX, z0: d.z - w / 2, z1: d.z + w / 2 });
+    else if (near(d.x, room.maxX)) paths.push({ x0: room.maxX, x1: room.maxX + LEN, z0: d.z - w / 2, z1: d.z + w / 2 });
+    else if (near(d.z, room.maxZ)) paths.push({ x0: d.x - w / 2, x1: d.x + w / 2, z0: room.maxZ, z1: room.maxZ + LEN });
+    else if (near(d.z, room.minZ)) paths.push({ x0: d.x - w / 2, x1: d.x + w / 2, z0: room.minZ - LEN, z1: room.minZ });
+  }
+  // ประตูทางเข้าหลักที่อยู่ลึกเข้ามา (ระหว่างร้านค้ากับที่วางจาน) ต่อทางเดินออกไปด้านหน้า
+  const inner = doors.filter((d) => d.w > d.d && !near(d.z, room.minZ) && !near(d.z, room.maxZ));
+  if (inner.length) {
+    const front = inner.filter((d) => Math.abs(d.z - room.minZ) < Math.abs(d.z - room.maxZ));
+    if (front.length) {
+      const x0 = Math.min(...front.map((d) => d.x - d.w / 2)) - 0.6;
+      const x1 = Math.max(...front.map((d) => d.x + d.w / 2)) + 0.6;
+      paths.push({ x0, x1, z0: room.minZ - LEN, z1: room.minZ });
+    }
+  }
+  const pathMat = mat(0xd9d4ca, { roughness: 0.95 });
+  for (const p of paths) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(p.x1 - p.x0, p.z1 - p.z0), pathMat);
+    m.rotation.x = -Math.PI / 2;
+    m.position.set((p.x0 + p.x1) / 2, -0.012, (p.z0 + p.z1) / 2);
+    m.receiveShadow = true;
+    scene.add(m);
+  }
+
+  // จุดนี้ปลูกต้นไม้ได้ไหม: อยู่นอกอาคาร (หรือในส่วนที่กำแพงเว้า) ไม่ทับทางเดิน
+  const inRect = (x, z, r, pad) => x > r.x0 - pad && x < r.x1 + pad && z > r.z0 - pad && z < r.z1 + pad;
+  const roomRect = { x0: room.minX, x1: room.maxX, z0: room.minZ, z1: room.maxZ };
+  const free = (x, z, pad) => {
+    const inCut = cutouts.some((c) => inRect(x, z, { x0: c.minX, x1: c.maxX, z0: c.minZ, z1: c.maxZ }, -pad));
+    if (inRect(x, z, roomRect, pad) && !inCut) return false;
+    return !paths.some((p) => inRect(x, z, p, pad));
+  };
+
+  // ต้นไม้: สุ่มแบบกำหนด seed ให้หน้าตาเหมือนเดิมทุกครั้ง เว้นระยะไม่ให้เบียดกัน
+  let s = 4242;
+  const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const trees = [];
+  const area = { x0: room.minX - 26, x1: room.maxX + 26, z0: room.minZ - 26, z1: room.maxZ + 24 };
+  for (let tries = 0; tries < 4000 && trees.length < 150; tries++) {
+    const x = area.x0 + r() * (area.x1 - area.x0);
+    const z = area.z0 + r() * (area.z1 - area.z0);
+    const size = 0.8 + r() * 0.7;
+    if (!free(x, z, 1.8 * size)) continue;
+    if (trees.some((t) => (t.x - x) ** 2 + (t.z - z) ** 2 < (2.6 * (t.size + size)) ** 2)) continue;
+    trees.push({ x, z, size, shade: r() });
+  }
+  const trunkGeo = new THREE.CylinderGeometry(0.13, 0.18, 1.6, 6).translate(0, 0.8, 0);
+  const crownGeo = new THREE.IcosahedronGeometry(1, 0);
+  const trunks = new THREE.InstancedMesh(trunkGeo, M.trunk, trees.length);
+  const crowns = new THREE.InstancedMesh(crownGeo, mat(0xffffff, { flatShading: true, roughness: 0.9 }), trees.length * 2);
+  const m4 = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const v = new THREE.Vector3();
+  const sc = new THREE.Vector3();
+  const c = new THREE.Color();
+  const GREENS = [0x5fa35a, 0x4f9a52, 0x6db564, 0x3f8a4a];
+  trees.forEach((t, i) => {
+    trunks.setMatrixAt(i, m4.compose(v.set(t.x, 0, t.z), q.identity(), sc.setScalar(t.size)));
+    // ทรงพุ่ม 2 ก้อนซ้อนกัน หมุนต่างกันนิดหน่อยให้ไม่ซ้ำ
+    q.setFromAxisAngle(v.set(0, 1, 0), t.shade * 6);
+    crowns.setMatrixAt(i * 2, m4.compose(v.set(t.x, 2.1 * t.size, t.z), q, sc.set(1.5, 1.25, 1.5).multiplyScalar(t.size)));
+    crowns.setMatrixAt(i * 2 + 1, m4.compose(v.set(t.x + 0.3 * t.size, 2.9 * t.size, t.z - 0.2 * t.size), q, sc.set(1, 0.9, 1).multiplyScalar(t.size)));
+    crowns.setColorAt(i * 2, c.set(GREENS[Math.floor(t.shade * GREENS.length)]));
+    crowns.setColorAt(i * 2 + 1, c.offsetHSL(0, 0, 0.05));
+  });
+
+  // พุ่มไม้เตี้ยเลียบผนังด้านนอก (เว้นตรงทางเดิน)
+  const bushes = [];
+  const along = (ax, az, bx, bz, ox, oz) => {
+    const len = Math.hypot(bx - ax, bz - az);
+    for (let d = 1; d < len - 0.5; d += 1.6) {
+      const x = ax + ((bx - ax) * d) / len + ox;
+      const z = az + ((bz - az) * d) / len + oz;
+      if (free(x, z, 0.5)) bushes.push({ x, z, k: 0.45 + r() * 0.25 });
+    }
+  };
+  along(room.minX, room.minZ, room.minX, room.maxZ, -0.9, 0);
+  along(room.maxX, room.minZ, room.maxX, room.maxZ, 0.9, 0);
+  along(room.minX, room.maxZ, room.maxX, room.maxZ, 0, 0.9);
+  along(room.minX, room.minZ, room.maxX, room.minZ, 0, -0.9);
+  const bushMesh = new THREE.InstancedMesh(crownGeo, M.leafDark, bushes.length);
+  bushes.forEach((b, i) => bushMesh.setMatrixAt(i, m4.compose(v.set(b.x, b.k * 0.6, b.z), q.identity(), sc.set(b.k * 1.3, b.k, b.k * 1.3))));
+
+  for (const im of [trunks, crowns, bushMesh]) {
+    im.castShadow = true;
+    im.receiveShadow = true;
+    scene.add(im);
+  }
+}
+
 // ช่วง [from, to] ที่เหลือหลังเว้นช่อง gaps ออก
 function segments(from, to, gaps) {
   const out = [];
@@ -331,6 +434,7 @@ export function buildScenery(scene, layout) {
     scene.add(obj);
   }
 
+  outdoor(scene, layout);
   return floor;
 }
 

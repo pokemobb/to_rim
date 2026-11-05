@@ -85,6 +85,29 @@
   </button>
   <button id="pill" class="pill" hidden><span class="dot"></span><span id="pill-text"></span></button>
 
+  <!-- 🎲 วันนี้กินอะไรดี -->
+  <button id="food-btn" class="fab fab-left" hidden aria-label="วันนี้กินอะไรดี">🎲</button>
+  <section id="food" class="card bottom" hidden>
+    <div class="row">
+      <div>
+        <div class="big food-title">วันนี้กินอะไรดี</div>
+        <div class="label" id="food-sub"></div>
+      </div>
+      <button id="food-close" class="icon" aria-label="ปิด">✕</button>
+    </div>
+    <div class="slot" id="food-slot" aria-live="polite">🍛</div>
+    <button id="food-spin" class="primary">🎲 สุ่มเลย</button>
+    <button id="food-edit-toggle" class="link plain">แก้รายการเมนู</button>
+    <div id="food-edit" class="stack" hidden>
+      <div class="chips" id="food-chips"></div>
+      <div class="share-row">
+        <input id="food-new" placeholder="เพิ่มเมนู เช่น ข้าวขาหมู" maxlength="30" aria-label="เพิ่มเมนู" enterkeyhint="done">
+        <button id="food-add" class="ghost">เพิ่ม</button>
+      </div>
+      <button id="food-reset" class="link plain">คืนรายการเริ่มต้น</button>
+    </div>
+  </section>
+
   <!-- แอดมิน: เปิดด้วย ?admin -->
   <section id="admin" class="card bottom" hidden>
     <div class="label" id="adm-pick">แตะโต๊ะเพื่อเปลี่ยนแบบ หรือแตะช่องว่างเพื่อเพิ่มโต๊ะ</div>

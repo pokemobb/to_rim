@@ -370,3 +370,39 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
   box-shadow: var(--shadow);
 }
 .title { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+/* ---------- 🎲 วันนี้กินอะไรดี ---------- */
+.fab-left { right: auto; left: 12px; font-size: 24px; }
+.food-title { font-size: 22px; }
+.link.plain { color: var(--blue); }
+.slot {
+  min-height: 84px;
+  display: grid;
+  place-items: center;
+  padding: 8px 14px;
+  border-radius: 16px;
+  background: var(--fill);
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 1.25;
+  text-align: center;
+  overflow: hidden;
+}
+.slot.tick { animation: tick 0.09s ease-out; }
+@keyframes tick { from { transform: translateY(-35%); opacity: 0.3; } }
+.slot.done { background: var(--blue-tint); color: var(--blue); animation: pop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1); }
+@keyframes pop { from { transform: scale(0.9); } }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; max-height: 28vh; overflow-y: auto; }
+.chip {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 0 12px;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+}
+.chip b { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; background: var(--fill-strong); color: var(--muted); font-size: 11px; }

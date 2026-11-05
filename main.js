@@ -571,6 +571,7 @@ canvas.addEventListener('pointermove', (e) => {
 
 // ---------- แผงด้านล่าง: เปิดเป็นการ์ด หรือย่อเหลือป้ายเล็กให้เห็นหมุดเต็มจอ ----------
 let panelOpen = false;
+let foodOpen = false; // การ์ด 🎲 วันนี้กินอะไรดี
 let pillText = '';
 let collapseTimer;
 
@@ -583,6 +584,9 @@ function setPanel(open) {
   $('pill').hidden = !active || open;
   $('recenter').hidden = $('pill').hidden || !tableById.get(selectedId);
   $('pill-text').textContent = mode === 'owner' ? `โต๊ะ ${selectedId} · แตะเพื่อแชร์` : pillText;
+  if (open && foodOpen) closeFood(false);
+  if (foodOpen) $('pill').hidden = $('recenter').hidden = true;
+  $('food-btn').hidden = mode === 'admin' || foodOpen || !$('sheet').hidden || !$('banner').hidden;
 }
 
 $('pill').addEventListener('click', () => setPanel(true));
@@ -694,6 +698,7 @@ async function pollGroup(first = false) {
   if (!document.hidden) {
     const state = await groupApi('GET');
     if (groupUnavailable(state)) return leaveGroup();
+    if (!state.error) applyMeal(state.meal, !first);
     if (!state.error && (first || state.at !== groupState?.at)) {
       applyGroup(state, !first && groupState !== null);
       const t = tableById.get(confirmedId);
@@ -800,6 +805,125 @@ function toast(text) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { el.hidden = true; }, 2500);
 }
+
+// ---------- 🎲 วันนี้กินอะไรดี ----------
+// สุ่มเมนูอาหารตามสั่ง แก้รายการเองได้ (เก็บในเครื่อง) ถ้าอยู่ในกลุ่ม เพื่อนจะเห็นเมนูที่สุ่มได้ด้วย
+const DEFAULT_MENU = [
+  'กะเพราหมูสับไข่ดาว', 'กะเพราไก่', 'ข้าวผัดหมู', 'ข้าวผัดกุ้ง', 'ผัดซีอิ๊ว', 'ราดหน้า',
+  'สุกี้แห้ง', 'สุกี้น้ำ', 'ข้าวไข่เจียวหมูสับ', 'หมูกระเทียม', 'ผัดพริกแกงหมู', 'คะน้าหมูกรอบ',
+  'ข้าวมันไก่', 'ก๋วยเตี๋ยว', 'ผัดไทย', 'ข้าวหมูทอด',
+];
+const MENU_KEY = 'torim:menu';
+let menu = Array.isArray(store.get(MENU_KEY)) && store.get(MENU_KEY).length ? store.get(MENU_KEY) : DEFAULT_MENU.slice();
+let spinning = false;
+let groupMeal = null; // { name, date, at } เมนูล่าสุดที่กลุ่มสุ่มได้วันนี้
+let myMealAt = 0;
+
+function foodSub() {
+  if (groupMeal && !spinning) return `กลุ่มสุ่มได้เมนูนี้ · ${agoText(groupMeal.at)}`;
+  return groupId ? 'สุ่มแล้วเพื่อนในกลุ่มจะเห็นด้วย' : 'ลังเลอยู่ใช่ไหม ให้ดวงช่วยเลือก';
+}
+
+function renderFood() {
+  $('food-sub').textContent = foodSub();
+  if (!spinning && groupMeal) {
+    $('food-slot').textContent = groupMeal.name;
+    $('food-slot').classList.add('done');
+  }
+  $('food-spin').textContent = $('food-slot').classList.contains('done') ? '🎲 สุ่มใหม่' : '🎲 สุ่มเลย';
+  $('food-spin').disabled = spinning || !menu.length;
+  const chips = $('food-chips');
+  chips.replaceChildren(...menu.map((name, i) => {
+    const chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.setAttribute('aria-label', `ลบ ${name}`);
+    chip.append(name, Object.assign(document.createElement('b'), { textContent: '✕' }));
+    chip.addEventListener('click', () => { menu.splice(i, 1); saveMenu(); });
+    return chip;
+  }));
+}
+
+function saveMenu() {
+  store.set(MENU_KEY, menu);
+  renderFood();
+}
+
+function openFood() {
+  setPanel(false);
+  foodOpen = true;
+  $('food').hidden = false;
+  setPanel(false); // ซ่อนแคปซูลกับปุ่มลอยระหว่างเปิดการ์ดเมนู
+  renderFood();
+}
+
+function closeFood(restore = true) {
+  foodOpen = false;
+  $('food').hidden = true;
+  $('food-edit').hidden = true;
+  if (restore) setPanel(false);
+}
+
+function spinFood() {
+  if (spinning || !menu.length) return;
+  spinning = true;
+  const slot = $('food-slot');
+  const prev = slot.textContent;
+  let pick;
+  do pick = menu[Math.floor(Math.random() * menu.length)]; while (menu.length > 1 && pick === prev);
+  slot.classList.remove('done');
+  renderFood();
+  let i = Math.floor(Math.random() * menu.length);
+  let delay = 45;
+  const step = () => {
+    if (delay > 280) return finish();
+    slot.textContent = menu[i++ % menu.length];
+    slot.classList.remove('tick');
+    void slot.offsetWidth; // เริ่มแอนิเมชันใหม่ทุกครั้งที่เปลี่ยนชื่อ
+    slot.classList.add('tick');
+    delay *= 1.13;
+    setTimeout(step, delay);
+  };
+  const finish = async () => {
+    slot.classList.remove('tick');
+    slot.textContent = pick;
+    slot.classList.add('done');
+    navigator.vibrate?.(25);
+    spinning = false;
+    groupMeal = null;
+    renderFood();
+    if (!groupId) return;
+    const res = await groupApi('POST', { meal: pick, date: today() });
+    if (res.meal) {
+      myMealAt = res.meal.at;
+      groupMeal = res.meal;
+      $('food-sub').textContent = 'ส่งให้เพื่อนในกลุ่มแล้ว ✓';
+    }
+  };
+  step();
+}
+
+// เมนูจากกลุ่ม (announce = เพื่อนเพิ่งสุ่ม ให้แจ้งเตือน)
+function applyMeal(meal, announce) {
+  if (!meal || meal.date !== today() || meal.at === groupMeal?.at) return;
+  groupMeal = meal;
+  if (announce && meal.at !== myMealAt) toast(`🎲 เพื่อนสุ่มได้: ${meal.name}`);
+  if (foodOpen && !spinning) renderFood();
+}
+
+$('food-btn').addEventListener('click', openFood);
+$('food-close').addEventListener('click', () => closeFood());
+$('food-spin').addEventListener('click', spinFood);
+$('food-edit-toggle').addEventListener('click', () => { $('food-edit').hidden = !$('food-edit').hidden; });
+$('food-reset').addEventListener('click', () => { menu = DEFAULT_MENU.slice(); saveMenu(); });
+function addMenu() {
+  const name = $('food-new').value.replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 30);
+  if (!name) return;
+  if (!menu.includes(name)) menu.push(name);
+  $('food-new').value = '';
+  saveMenu();
+}
+$('food-add').addEventListener('click', addMenu);
+$('food-new').addEventListener('keydown', (e) => { if (e.key === 'Enter') addMenu(); });
 
 function shareUrl() {
   const url = new URL(location.pathname, location.origin);

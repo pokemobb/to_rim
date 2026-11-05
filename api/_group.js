@@ -24,10 +24,11 @@ async function redis(config, command, fetchImpl) {
 }
 
 const empty = { table: null, date: null, by: '', at: 0 };
-const cleanName = (name) => String(name ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 20);
+const cleanName = (name, max = 20) => String(name ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, max);
 
 // GET: { g }  → โต๊ะล่าสุดของกลุ่ม
 // POST: { g, table, date, by } → ตั้งโต๊ะใหม่ (table = null คือยกเลิก)
+// POST: { g, meal, date }      → เมนูที่สุ่มได้วันนี้ (เก็บแยก key ไม่ไปทับโต๊ะ)
 export async function handleGroup(method, input, env, fetchImpl = fetch) {
   const config = redisConfig(env);
   if (!config) return { status: 503, body: { error: 'not-configured' } };
@@ -35,11 +36,23 @@ export async function handleGroup(method, input, env, fetchImpl = fetch) {
   const g = String(input.g ?? '');
   if (!GROUP_RE.test(g)) return { status: 400, body: { error: 'bad-group' } };
   const key = `torim:group:${g}`;
+  const mealKey = `torim:meal:${g}`;
 
   try {
     if (method === 'GET') {
-      const raw = await redis(config, ['GET', key], fetchImpl);
-      return { status: 200, body: raw ? { ...empty, ...JSON.parse(raw) } : empty };
+      const [raw, rawMeal] = await redis(config, ['MGET', key, mealKey], fetchImpl);
+      const meal = rawMeal ? JSON.parse(rawMeal) : null;
+      return { status: 200, body: { ...empty, ...(raw ? JSON.parse(raw) : {}), meal } };
+    }
+
+    if ('meal' in input) {
+      const name = cleanName(input.meal, 40);
+      const date = String(input.date ?? '');
+      if (!name) return { status: 400, body: { error: 'bad-meal' } };
+      if (!DATE_RE.test(date)) return { status: 400, body: { error: 'bad-date' } };
+      const meal = { name, date, at: Date.now() };
+      await redis(config, ['SET', mealKey, JSON.stringify(meal), 'EX', KEEP_SECONDS], fetchImpl);
+      return { status: 200, body: { meal } };
     }
 
     const table = input.table == null ? null : String(input.table);
