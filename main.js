@@ -25,10 +25,10 @@ const TYPES = {
 
 const COLOR = {
   bg: 0xdfe8ee,
-  table: 0x2f5d80,
-  tableHover: 0x4c86b3,
+  table: 0x8a5a36, // โต๊ะไม้สีน้ำตาลแบบของจริง
+  tableHover: 0xae7a4f,
   tableSelected: 0xff4d55,
-  tableFaded: 0xa9bccd, // โต๊ะอื่นตอนโฟกัสโต๊ะที่จอง
+  tableFaded: 0xd2bea9, // โต๊ะอื่นตอนโฟกัสโต๊ะที่จอง
   seat: 0xb9c3cf,
   metal: 0x6b7280,
   pin: 0xff3b45,
