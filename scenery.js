@@ -252,9 +252,9 @@ function tileTexture() {
   const c = document.createElement('canvas');
   c.width = c.height = 128;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#f6f1ea';
+  ctx.fillStyle = '#f5e4cd';
   ctx.fillRect(0, 0, 128, 128);
-  ctx.strokeStyle = '#ebe4da';
+  ctx.strokeStyle = '#ead3b6';
   ctx.lineWidth = 2;
   ctx.strokeRect(0, 0, 128, 128);
   const tex = new THREE.CanvasTexture(c);

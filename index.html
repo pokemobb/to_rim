@@ -12,7 +12,7 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="theme-color" content="#fbf5ee">
+  <meta name="theme-color" content="#ffc8b0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -68,6 +68,7 @@
           </div>
           <div class="stack" id="sheet-share">
             <!-- รูปโต๊ะ: ถ่ายของบนโต๊ะ/กระเป๋าไว้ให้เพื่อนสังเกตง่าย -->
+            <div class="photo-wrap">
             <button id="photo-row" class="photo-row">
               <span class="photo-thumb" id="photo-thumb">📷</span>
               <span class="photo-text">
@@ -76,6 +77,8 @@
               </span>
               <span class="photo-go" aria-hidden="true">›</span>
             </button>
+            <button id="photo-album" class="ghost square" aria-label="เลือกรูปจากอัลบั้ม" title="เลือกรูปจากอัลบั้ม">🖼️</button>
+            </div>
             <div class="share-bar">
               <button id="share" class="primary">แชร์ให้เพื่อน</button>
               <button id="preview" class="ghost square" aria-label="ดูแบบที่เพื่อนเห็น" title="ดูแบบที่เพื่อนเห็น">👀</button>
@@ -84,7 +87,9 @@
               </button>
             </div>
           </div>
-          <input id="photo-input" type="file" accept="image/*" hidden>
+          <!-- ซ่อนแบบมองไม่เห็นแทน hidden: บางเบราว์เซอร์ (เช่น ใน LINE) ไม่ยอมเปิดกล้องจากช่องที่ display:none -->
+          <input id="photo-input" class="vh" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+          <input id="photo-pick" class="vh" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
         </div>
 
         <!-- ฝั่งเพื่อน: เปิดจากลิงก์ -->
@@ -201,6 +206,7 @@
     <img id="photo-img" alt="รูปโต๊ะ">
     <div class="photo-view-actions">
       <button id="photo-delete" class="ghost dark">ลบรูป</button>
+      <button id="photo-repick" class="ghost dark">🖼️ อัลบั้ม</button>
       <button id="photo-retake" class="primary">📷 ถ่ายใหม่</button>
     </div>
   </section>

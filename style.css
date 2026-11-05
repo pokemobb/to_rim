@@ -2,16 +2,19 @@
 :root {
   --font: 'Noto Sans Thai', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-fun: 'Mali', 'Noto Sans Thai', system-ui, sans-serif;
-  --bg: #fbf5ee;
-  --material: rgba(255, 255, 255, 0.92);
+  --bg: #ffd2bc;
+  --material: rgba(255, 255, 255, 0.95);
   --material-solid: #ffffff;
-  --text: #4a3a33;
-  --muted: rgba(74, 58, 51, 0.6);
-  --separator: rgba(74, 58, 51, 0.1);
-  --fill: #f6efe8;
-  --fill-strong: #ece2d8;
-  --accent: #e8654d;
-  --accent-tint: #ffe9e2;
+  --panel: #fff0e3; /* พื้นแถบล่าง: ครีมอมส้ม ไม่ขาวโล่ง */
+  --text: #4a2f26;
+  --muted: rgba(74, 47, 38, 0.64);
+  --separator: rgba(74, 47, 38, 0.1);
+  --fill: #ffffff;
+  --fill-strong: #ffe0cf;
+  --accent: #f4583c;
+  --accent-tint: #ffe0d6;
+  --mint: #1fb58f;
+  --sun: #ffb72b;
   --red: #e0574a;
   --orange-tint: #fff1d9;
   --orange-text: #9a6212;
@@ -21,9 +24,10 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #231d1a;
+    --bg: #2a1d1a;
     --material: rgba(46, 38, 34, 0.94);
     --material-solid: #2e2622;
+    --panel: #36291f;
     --text: #f6ece6;
     --muted: rgba(246, 236, 230, 0.6);
     --separator: rgba(246, 236, 230, 0.1);
@@ -46,9 +50,10 @@ html, body {
   overflow: hidden;
   /* พื้นเรียบสีครีม มีแสงพาสเทลจางๆ สองมุม ไม่มีลาย จะได้ไม่ลายตา */
   background:
-    radial-gradient(120% 60% at 0% 0%, rgba(255, 214, 196, 0.45), transparent 60%),
-    radial-gradient(100% 50% at 100% 30%, rgba(205, 236, 220, 0.5), transparent 60%),
-    var(--bg);
+    radial-gradient(90% 55% at 100% 35%, rgba(126, 214, 184, 0.55), transparent 65%),
+    radial-gradient(110% 60% at 0% 0%, #ffb59a, transparent 70%),
+    linear-gradient(180deg, #ffc8b0 0%, #ffd9a8 100%);
+  background-color: var(--bg);
   color: var(--text);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
@@ -605,3 +610,30 @@ body.mascot-on #hint { display: none; }
 .slot.done { background: var(--accent-tint); color: var(--accent); }
 .photo-row { border-radius: 20px; }
 .photo-thumb { border-radius: 14px; }
+
+/* ---------- โทนสดใส: แถบล่างสีครีมส้ม ของข้างในเป็นการ์ดขาว ---------- */
+.dock, .card { background: var(--panel); }
+.dock { box-shadow: 0 -8px 30px rgba(180, 80, 40, 0.18); }
+.card.top { background: var(--material-solid); }
+.title { color: var(--accent); }
+.ghost { box-shadow: 0 2px 8px rgba(190, 90, 50, 0.12); }
+.primary { box-shadow: 0 6px 16px rgba(244, 88, 60, 0.38); }
+.mascot-bubble, .photo-row, .slot, .chip { background: #fff; box-shadow: 0 2px 10px rgba(190, 90, 50, 0.1); }
+.mascot-bubble::before { border-right-color: #fff; }
+.mascot-name { color: var(--mint); }
+.tab.on { background: var(--accent); color: #fff; box-shadow: 0 4px 12px rgba(244, 88, 60, 0.32); }
+.tab { color: rgba(74, 47, 38, 0.7); }
+.slot.done { background: var(--sun); color: #4a2f26; }
+.table-no span, .big span { color: var(--accent); }
+.photo-thumb { background-color: var(--fill-strong); box-shadow: none; }
+.photo-wrap { display: flex; gap: 8px; }
+.photo-wrap .photo-row { flex: 1; min-width: 0; }
+.photo-wrap .square { height: auto; min-height: 0; border-radius: 20px; width: 56px; }
+.photo-view-actions { grid-template-columns: 1fr 1fr 1.3fr; }
+.vh { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+.fab { color: var(--accent); }
+@media (prefers-color-scheme: dark) {
+  .mascot-bubble, .photo-row, .slot, .chip, .ghost { background: var(--material-solid); }
+  .mascot-bubble::before { border-right-color: var(--material-solid); }
+  .tab { color: var(--muted); }
+}

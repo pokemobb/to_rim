@@ -845,6 +845,7 @@ function renderPhotoRow() {
   const p = currentPhoto();
   const thumb = $('photo-thumb');
   thumb.classList.toggle('has', !!p);
+  $('photo-album').hidden = !!p; // มีรูปแล้ว เปลี่ยน/เลือกใหม่ได้จากหน้าดูรูปเต็มจอ
   thumb.style.backgroundImage = p ? `url("${p.data}")` : '';
   $('photo-title').textContent = p ? 'รูปโต๊ะ' : 'ถ่ายรูปโต๊ะ';
   $('photo-sub').textContent = p
@@ -906,7 +907,8 @@ async function savePhoto(data) {
 }
 
 $('photo-row').addEventListener('click', () => (currentPhoto() ? openPhoto() : $('photo-input').click()));
-$('photo-input').addEventListener('change', async (e) => {
+$('photo-album').addEventListener('click', () => $('photo-pick').click());
+async function onPhotoChosen(e) {
   const file = e.target.files?.[0];
   e.target.value = ''; // เลือกรูปเดิมซ้ำได้
   if (!file || !confirmedId) return;
@@ -916,7 +918,10 @@ $('photo-input').addEventListener('change', async (e) => {
   } catch {
     toast('เปิดรูปนี้ไม่ได้ ลองรูปอื่นนะ');
   }
-});
+}
+// ช่องแรกเปิดกล้องหลังทันที (capture) ช่องที่สองเลือกจากอัลบั้ม
+$('photo-input').addEventListener('change', onPhotoChosen);
+$('photo-pick').addEventListener('change', onPhotoChosen);
 
 function openPhoto() {
   const p = currentPhoto();
@@ -931,6 +936,7 @@ function closePhoto() {
 }
 $('photo-close').addEventListener('click', closePhoto);
 $('photo-retake').addEventListener('click', () => $('photo-input').click());
+$('photo-repick').addEventListener('click', () => $('photo-pick').click());
 $('photo-delete').addEventListener('click', async () => {
   if (!window.confirm('ลบรูปโต๊ะนี้ใช่ไหม?')) return;
   closePhoto();
