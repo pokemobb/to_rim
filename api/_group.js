@@ -6,7 +6,7 @@ const GROUP_RE = /^[a-z0-9]{6,16}$/;
 const TABLE_RE = /^\d{1,2}-\d{1,2}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const KEEP_SECONDS = 60 * 60 * 24 * 60; // กลุ่มที่ไม่มีใครแตะเลย 60 วันจะหายไปเอง
-const PHOTO_SECONDS = 60 * 60 * 18; // รูปโต๊ะใช้แค่วันนั้น ลบเองหลัง 18 ชม.
+const PHOTO_SECONDS = 60 * 60 * 24; // รูปโต๊ะเก็บไว้แค่วันเดียว ลบเองหลัง 24 ชม. (หน้าเว็บโชว์เฉพาะรูปของวันนี้)
 const PHOTO_MAX = 400_000; // รูป JPEG ที่ย่อในเครื่องแล้ว (base64) ไม่เกินราว 300 KB
 const PHOTO_RE = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/;
 

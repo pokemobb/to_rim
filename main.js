@@ -774,9 +774,6 @@ function fillSheet(id, pending) {
     : `${pending ? describe(id) : describeShort(id)}${byLine}`;
   $('sheet-confirm').hidden = !pending;
   $('sheet-share').hidden = pending;
-  const chip = $('sel-chip');
-  chip.textContent = pending ? 'ยังไม่จอง' : groupId ? '👥 โต๊ะกลุ่ม' : '✓ จองแล้ว';
-  chip.className = `chip-status ${pending ? 'wait' : 'ok'}`;
   renderPhotoRow();
 }
 
@@ -835,7 +832,7 @@ $('clear').addEventListener('click', async () => {
 });
 
 // ---------- 📷 รูปโต๊ะ: ถ่ายของบนโต๊ะไว้ให้เพื่อนสังเกตง่าย ----------
-// ในกลุ่ม: เก็บใน Redis ของเว็บ (หมดอายุเองหลัง 18 ชม.) ไม่มีกลุ่ม: เก็บไว้ในเครื่องนี้
+// ในกลุ่ม: เก็บใน Redis ของเว็บแค่วันเดียว (ลบเองหลัง 24 ชม.) ไม่มีกลุ่ม: เก็บไว้ในเครื่องนี้
 const PHOTO_KEY = 'torim:photo';
 let photo = groupId ? null : store.get(PHOTO_KEY); // { table, date, at, data }
 let photoMetaAt = 0;
