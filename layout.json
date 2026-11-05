@@ -165,7 +165,6 @@
     { "col": 11, "row": 10, "type": "long6" },
     { "col": 12, "row": 10, "type": "long6" },
     { "col": 13, "row": 10, "type": "long6" },
-    { "col": 14, "row": 10, "type": "square4" },
     { "col": 2, "row": 11, "type": "long6" },
     { "col": 3, "row": 11, "type": "long6" },
     { "col": 4, "row": 11, "type": "long6" },
