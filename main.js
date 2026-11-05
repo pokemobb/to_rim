@@ -24,7 +24,7 @@ const TYPES = {
 };
 
 const COLOR = {
-  bg: 0xb4bfae, // ให้กลืนกับพื้นรอบอาคารตรงขอบไกลๆ
+  bg: 0xdde1e8, // ให้กลืนกับพื้นรอบอาคารตรงขอบไกลๆ
   table: 0x8a5a36, // โต๊ะไม้สีน้ำตาลแบบของจริง
   tableHover: 0xae7a4f,
   tableSelected: 0xff4d55,
@@ -138,19 +138,24 @@ function overview() {
   target.z += (a + z) / 2;
   return { pos: viewFrom(target, hi), target, distance: hi };
 }
-// มุมปกติ: ซูมเข้าครึ่งหนึ่งของภาพรวม แล้วเลื่อนซ้าย/ขวาไปหาจุดที่อยากดู
-// spanX = ความกว้างที่ต้องเห็นให้ครบ (เช่น ระยะจากประตูถึงโต๊ะ) ถ้ากว้างกว่าจอจะถอยออกให้พอ แต่ไม่เกินภาพรวม
-function sideView(x, spanX = 0) {
+// ล็อกมุมกล้อง: ระยะซูมคงที่ (ครึ่งหนึ่งของภาพรวม) และเลื่อนได้แค่ซ้าย/ขวา ไม่ขึ้นลง ไม่ซูม
+const lock = { d: 30, z: center.z, half: 10 };
+function updateLock() {
   const all = overview();
-  const halfFov = Math.tan(THREE.MathUtils.degToRad(fitCam.fov / 2));
-  const perMeter = halfFov * fitCam.aspect; // ครึ่งความกว้างที่เห็นบนพื้น ต่อระยะกล้อง 1 เมตร
-  const d = Math.min(all.distance, Math.max(all.distance * 0.5, (spanX / 2 + 3) / perMeter));
-  const half = d * perMeter;
-  const cx = (room.minX + room.maxX) / 2;
-  const tx = half * 2 >= roomW ? cx : THREE.MathUtils.clamp(x ?? cx, room.minX + half - 1, room.maxX - half + 1);
-  const target = all.target.clone().setX(tx);
-  return { pos: viewFrom(target, d), target };
+  const perMeter = Math.tan(THREE.MathUtils.degToRad(fitCam.fov / 2)) * fitCam.aspect; // ครึ่งความกว้างบนพื้น ต่อระยะ 1 เมตร
+  lock.d = all.distance * 0.5;
+  lock.z = all.target.z;
+  lock.half = lock.d * perMeter;
 }
+// เลื่อนได้ถึงแค่ขอบห้องพอดีจอ
+const clampX = (x) => (lock.half * 2 >= roomW
+  ? center.x
+  : THREE.MathUtils.clamp(x, room.minX + lock.half - 1, room.maxX - lock.half + 1));
+function sideView(x = center.x) {
+  const target = new THREE.Vector3(clampX(x), 0, lock.z);
+  return { pos: viewFrom(target, lock.d), target };
+}
+updateLock();
 const flyHome = (ms) => { const v = sideView(); flyTo(v.pos, v.target, ms); };
 
 const HOME = sideView();
@@ -162,20 +167,15 @@ controls.enableDamping = true;
 controls.enableRotate = false;
 controls.minPolarAngle = controls.maxPolarAngle = TILT;
 controls.screenSpacePanning = false; // เลื่อนไปตามพื้น ไม่ใช่ตามจอ
-controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
-controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN };
-controls.minDistance = 6;
-controls.maxDistance = span * 4;
+controls.enableZoom = false; // ซูมไม่ได้ ใช้ระยะที่ล็อกไว้
+controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN };
+controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.PAN };
 
-// ไม่ให้เลื่อนหลุดออกนอกโรงอาหาร
+// เลื่อนได้แค่ซ้าย/ขวา: ตรึงแนวลึกไว้ และไม่ให้เลื่อนหลุดขอบห้อง
 const panShift = new THREE.Vector3();
 function keepInRoom() {
   const t = controls.target;
-  panShift.set(
-    THREE.MathUtils.clamp(t.x, room.minX, room.maxX) - t.x,
-    0,
-    THREE.MathUtils.clamp(t.z, room.minZ, room.maxZ) - t.z,
-  );
+  panShift.set(clampX(t.x) - t.x, -t.y, lock.z - t.z);
   if (panShift.lengthSq() === 0) return;
   t.add(panShift);
   camera.position.add(panShift);
@@ -450,15 +450,19 @@ function flyTo(pos, target, ms = 1000) {
 }
 
 function flyToTable(t) {
-  const target = new THREE.Vector3(t.x, 0.7, t.z);
-  flyTo(viewFrom(target, 20), target);
+  const v = sideView(t.x);
+  flyTo(v.pos, v.target);
 }
 
-// ซูมครึ่งเดียว แล้วเลื่อนซ้าย/ขวาให้เห็นเส้นทางจากประตูถึงโต๊ะ (ถอยออกเฉพาะตอนเส้นทางกว้างกว่าจอ)
+// เลื่อนซ้าย/ขวาให้เห็นเส้นทางจากประตูถึงโต๊ะ (ระยะซูมคงที่)
 function flyToRoute(t) {
   if (!t || !entranceDoors.length) return flyHome(1200);
   const door = guidePoints(t)[0];
-  const v = sideView((door.x + t.x) / 2, Math.abs(t.x - door.x));
+  // เล็งกลางระหว่างประตูกับโต๊ะ ถ้าเส้นทางยาวเกินจอ ให้โต๊ะยังอยู่ในจอเสมอ
+  let x = (door.x + t.x) / 2;
+  const room4table = lock.half - 2.5;
+  if (Math.abs(t.x - x) > room4table) x = t.x - Math.sign(t.x - x) * room4table;
+  const v = sideView(x);
   flyTo(v.pos, v.target, 1200);
 }
 
@@ -1303,6 +1307,12 @@ function resize() {
   labelRenderer.setSize(w, h);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  // จอเปลี่ยนขนาด (หมุนจอ) คำนวณระยะล็อกใหม่ แล้ววางกล้องให้ตรง
+  updateLock();
+  if (!flight) {
+    keepInRoom();
+    camera.position.copy(viewFrom(controls.target, lock.d));
+  }
 }
 window.addEventListener('resize', resize);
 resize();

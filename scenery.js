@@ -272,7 +272,7 @@ export function buildScenery(scene, layout) {
   const cx = (room.minX + room.maxX) / 2;
   const cz = (room.minZ + room.maxZ) / 2;
 
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), mat(0xaeb9a8, { roughness: 1 })); // พื้นรอบอาคาร สีทึบเรียบๆ
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), mat(0xc9ced6, { roughness: 1 })); // พื้นรอบอาคาร สีเทาเรียบๆ ให้ตัวอาคารเด่น
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.02;
   ground.receiveShadow = true;
