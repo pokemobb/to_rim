@@ -6,8 +6,8 @@ import * as THREE from 'three';
 const mat = (color, opts = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, ...opts });
 
 const M = {
-  wall: mat(0xf3eee6),
-  wallCap: mat(0xd8d0c2),
+  wall: mat(0xf8f7fc),
+  wallCap: mat(0xb9b2dc),
   wood: mat(0xb9825a, { roughness: 0.6 }),
   counterTop: mat(0xf6f3ee, { roughness: 0.35 }),
   shelf: mat(0xfafafa, { roughness: 0.5 }),
@@ -252,9 +252,9 @@ function tileTexture() {
   const c = document.createElement('canvas');
   c.width = c.height = 128;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#f5e4cd';
+  ctx.fillStyle = '#eeebf8';
   ctx.fillRect(0, 0, 128, 128);
-  ctx.strokeStyle = '#ead3b6';
+  ctx.strokeStyle = '#ddd8f0';
   ctx.lineWidth = 2;
   ctx.strokeRect(0, 0, 128, 128);
   const tex = new THREE.CanvasTexture(c);

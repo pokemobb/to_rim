@@ -2,43 +2,47 @@
 :root {
   --font: 'Noto Sans Thai', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-fun: 'Mali', 'Noto Sans Thai', system-ui, sans-serif;
-  --bg: #ffd2bc;
-  --material: rgba(255, 255, 255, 0.95);
+  /* คู่สีหลัก: ม่วงอินดิโก้ (ทันสมัย อ่านง่ายบนขาว) + ชมพูแตงโม (สีเน้น)
+     สีเสริม: เหลืองมะม่วง และเขียวมิ้นต์ ใช้เป็นจุดๆ ไม่ให้แย่งกัน */
+  --bg: #5b3df0;
+  --material: rgba(255, 255, 255, 0.96);
   --material-solid: #ffffff;
-  --panel: #fff0e3; /* พื้นแถบล่าง: ครีมอมส้ม ไม่ขาวโล่ง */
-  --text: #4a2f26;
-  --muted: rgba(74, 47, 38, 0.64);
-  --separator: rgba(74, 47, 38, 0.1);
+  --panel: #f3f0ff; /* แถบล่าง: ลาเวนเดอร์อ่อน ของข้างในเป็นการ์ดขาว */
+  --text: #1f1b3a;
+  --muted: rgba(31, 27, 58, 0.62);
+  --separator: rgba(31, 27, 58, 0.1);
   --fill: #ffffff;
-  --fill-strong: #ffe0cf;
-  --accent: #f4583c;
-  --accent-tint: #ffe0d6;
-  --mint: #1fb58f;
-  --sun: #ffb72b;
-  --red: #e0574a;
-  --orange-tint: #fff1d9;
-  --orange-text: #9a6212;
-  --shadow: 0 8px 28px rgba(120, 86, 62, 0.1), 0 1px 3px rgba(120, 86, 62, 0.06);
+  --fill-strong: #e6e0ff;
+  --accent: #6246ea;
+  --accent-tint: #ebe6ff;
+  --pink: #ff4f6d;
+  --red: #ff4f6d;
+  --sun: #ffc93c;
+  --mint: #12b886;
+  --orange-tint: #fff3d1;
+  --orange-text: #8a5a00;
+  --tint: 50, 36, 140; /* ใช้ทำเงาโทนม่วง */
+  --shadow: 0 10px 30px rgba(var(--tint), 0.16), 0 1px 3px rgba(var(--tint), 0.08);
   --radius: 26px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #2a1d1a;
-    --material: rgba(46, 38, 34, 0.94);
-    --material-solid: #2e2622;
-    --panel: #36291f;
-    --text: #f6ece6;
-    --muted: rgba(246, 236, 230, 0.6);
-    --separator: rgba(246, 236, 230, 0.1);
-    --fill: rgba(246, 236, 230, 0.08);
-    --fill-strong: rgba(246, 236, 230, 0.14);
-    --accent: #f27a62;
-    --accent-tint: rgba(242, 122, 98, 0.18);
-    --red: #ff7468;
-    --orange-tint: rgba(255, 180, 80, 0.16);
-    --orange-text: #ffc46b;
-    --shadow: 0 10px 34px rgba(0, 0, 0, 0.4);
+    --bg: #17142b;
+    --material: rgba(36, 32, 62, 0.96);
+    --material-solid: #26214a;
+    --panel: #1d1938;
+    --text: #f2efff;
+    --muted: rgba(242, 239, 255, 0.62);
+    --separator: rgba(242, 239, 255, 0.1);
+    --fill: #26214a;
+    --fill-strong: #342d66;
+    --accent: #8b74ff;
+    --accent-tint: rgba(139, 116, 255, 0.2);
+    --orange-tint: rgba(255, 201, 60, 0.16);
+    --orange-text: #ffd66b;
+    --tint: 0, 0, 0;
+    --shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
   }
 }
 
@@ -49,10 +53,11 @@ html, body {
   height: 100%;
   overflow: hidden;
   /* พื้นเรียบสีครีม มีแสงพาสเทลจางๆ สองมุม ไม่มีลาย จะได้ไม่ลายตา */
+  /* ไล่สีม่วงเข้มไปชมพู แบบแอปวัยรุ่นสมัยนี้ ตัวแผนที่สีอ่อนจะเด่นขึ้นมาจากพื้น */
   background:
-    radial-gradient(90% 55% at 100% 35%, rgba(126, 214, 184, 0.55), transparent 65%),
-    radial-gradient(110% 60% at 0% 0%, #ffb59a, transparent 70%),
-    linear-gradient(180deg, #ffc8b0 0%, #ffd9a8 100%);
+    radial-gradient(80% 45% at 100% 0%, rgba(255, 79, 109, 0.55), transparent 70%),
+    radial-gradient(90% 50% at 0% 100%, rgba(18, 184, 134, 0.35), transparent 70%),
+    linear-gradient(165deg, #4b2fd6 0%, #7a4cf0 55%, #b45cf0 100%);
   background-color: var(--bg);
   color: var(--text);
   font-family: var(--font);
@@ -102,7 +107,7 @@ html, body {
 .hint { color: var(--muted); font-size: 13px; margin-top: 2px; }
 .label { color: var(--muted); font-size: 14px; line-height: 1.4; }
 .big { font-family: var(--font-fun); font-weight: 700; font-size: 28px; line-height: 1.2; }
-.big span { color: var(--accent); font-variant-numeric: tabular-nums; }
+.big span { color: var(--pink); font-variant-numeric: tabular-nums; }
 
 .row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .title-row { display: flex; align-items: center; gap: 10px; }
@@ -125,7 +130,7 @@ button:active:not(:disabled) { transform: scale(0.97); filter: brightness(0.94);
 button:disabled { opacity: 0.4; cursor: default; }
 button:focus-visible { outline: 3px solid var(--accent-tint); outline-offset: 2px; }
 
-.primary { background: var(--accent); color: #fff; box-shadow: 0 4px 12px rgba(232, 101, 77, 0.28); }
+.primary { background: var(--accent); color: #fff; box-shadow: 0 4px 12px rgba(98, 70, 234, 0.28); }
 .ghost { background: var(--fill); color: var(--text); }
 .danger { color: var(--red); }
 
@@ -260,7 +265,7 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
   top: calc(84px + env(safe-area-inset-top));
   transform: translateX(-50%);
   max-width: calc(100% - 24px);
-  background: rgba(74, 58, 51, 0.92);
+  background: rgba(31, 27, 58, 0.92);
   color: #fff;
   font-size: 15px;
   font-weight: 500;
@@ -278,8 +283,8 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
   padding: 6px 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.95);
-  color: #4a3a33;
-  box-shadow: 0 2px 6px rgba(120, 86, 62, 0.14);
+  color: #1f1b3a;
+  box-shadow: 0 2px 6px rgba(var(--tint), 0.14);
   white-space: nowrap;
 }
 /* ป้ายลอยเหนือโต๊ะที่เลือก: ฟองคำพูดเล็กๆ มีหางชี้ลงไปที่ก้าน
@@ -294,7 +299,7 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
   padding: 6px 11px 6px 8px;
   border-radius: 999px;
   background: #fff;
-  color: #4a3a33;
+  color: #1f1b3a;
   font: 700 13px/1 var(--font);
   white-space: nowrap;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
@@ -313,14 +318,14 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
   width: 10px;
   height: 10px;
   border-radius: 999px;
-  background: var(--accent);
-  box-shadow: 0 0 0 3px rgba(232, 101, 77, 0.2);
+  background: var(--pink);
+  box-shadow: 0 0 0 3px rgba(255, 79, 109, 0.22);
 }
 .tag.landmark {
   font-size: 12px;
   padding: 5px 9px;
   background: rgba(255, 255, 255, 0.8);
-  color: #7a6a62;
+  color: #4b4670;
   box-shadow: none;
 }
 /* เลขหัวแถวแบบตัวหนังสือบนแผนที่ มีขอบขาวให้อ่านออกบนพื้น */
@@ -328,7 +333,7 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
   background: none;
   box-shadow: none;
   padding: 0;
-  color: #8a7a72;
+  color: #4b4670;
   font-size: 15px;
   font-weight: 700;
   text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 6px #fff;
@@ -479,7 +484,7 @@ body.mascot-on #hint { display: none; }
   bottom: 0;
   background: var(--material-solid);
   border-radius: 30px 30px 0 0;
-  box-shadow: 0 -6px 28px rgba(120, 86, 62, 0.1);
+  box-shadow: 0 -6px 28px rgba(var(--tint), 0.1);
 }
 .dock-body {
   max-width: 520px;
@@ -538,7 +543,7 @@ body.mascot-on #hint { display: none; }
 /* ---------- การ์ดโต๊ะที่จองแล้ว (กะทัดรัด) ---------- */
 .table-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .table-no { font-family: var(--font-fun); font-weight: 700; font-size: 26px; line-height: 1.15; }
-.table-no span { color: var(--accent); font-variant-numeric: tabular-nums; }
+.table-no span { color: var(--pink); font-variant-numeric: tabular-nums; }
 .one-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: -6px; font-size: 13px; }
 #sheet { gap: 10px; }
 
@@ -613,18 +618,18 @@ body.mascot-on #hint { display: none; }
 
 /* ---------- โทนสดใส: แถบล่างสีครีมส้ม ของข้างในเป็นการ์ดขาว ---------- */
 .dock, .card { background: var(--panel); }
-.dock { box-shadow: 0 -8px 30px rgba(180, 80, 40, 0.18); }
+.dock { box-shadow: 0 -8px 30px rgba(var(--tint), 0.18); }
 .card.top { background: var(--material-solid); }
 .title { color: var(--accent); }
-.ghost { box-shadow: 0 2px 8px rgba(190, 90, 50, 0.12); }
-.primary { box-shadow: 0 6px 16px rgba(244, 88, 60, 0.38); }
-.mascot-bubble, .photo-row, .slot, .chip { background: #fff; box-shadow: 0 2px 10px rgba(190, 90, 50, 0.1); }
+.ghost { box-shadow: 0 2px 8px rgba(var(--tint), 0.12); }
+.primary { box-shadow: 0 6px 16px rgba(98, 70, 234, 0.38); }
+.mascot-bubble, .photo-row, .slot, .chip { background: #fff; box-shadow: 0 2px 10px rgba(var(--tint), 0.1); }
 .mascot-bubble::before { border-right-color: #fff; }
 .mascot-name { color: var(--mint); }
-.tab.on { background: var(--accent); color: #fff; box-shadow: 0 4px 12px rgba(244, 88, 60, 0.32); }
-.tab { color: rgba(74, 47, 38, 0.7); }
-.slot.done { background: var(--sun); color: #4a2f26; }
-.table-no span, .big span { color: var(--accent); }
+.tab.on { background: var(--accent); color: #fff; box-shadow: 0 4px 12px rgba(98, 70, 234, 0.32); }
+.tab { color: var(--muted); }
+.slot.done { background: var(--sun); color: #1f1b3a; }
+.table-no span, .big span { color: var(--pink); }
 .photo-thumb { background-color: var(--fill-strong); box-shadow: none; }
 .photo-wrap { display: flex; gap: 8px; }
 .photo-wrap .photo-row { flex: 1; min-width: 0; }

@@ -25,13 +25,14 @@ const TYPES = {
 };
 
 const COLOR = {
-  table: 0xa77a55, // โต๊ะไม้สีน้ำตาลนุ่มๆ ไม่ตัดกับพื้นแรงจนลายตา
-  tableHover: 0xbf9268,
-  tableSelected: 0xf26a55, // สีส้มพีชเดียวกับปุ่มหลัก
-  tableFaded: 0xe3d5c6, // โต๊ะอื่นตอนโฟกัสโต๊ะที่จอง
-  seat: 0xdcd6ce,
-  metal: 0x9ca0a6,
-  pin: 0xf26a55,
+  // โต๊ะน้ำตาลช็อกโกแลต (โทนอุ่น) บนพื้นลาเวนเดอร์อ่อน (โทนเย็น) = ตัดกันชัด ไม่กลืนกัน
+  table: 0x7a4a2e,
+  tableHover: 0x9a6340,
+  tableSelected: 0xff4f6d, // ชมพูแตงโม สีเน้นของแอป เห็นชัดสุดในแผนที่
+  tableFaded: 0xd9bfa6, // โต๊ะอื่นตอนโฟกัสโต๊ะที่จอง: น้ำตาลอ่อน ยังแยกจากพื้นม่วงอ่อนได้
+  seat: 0x8f95c4, // เก้าอี้สีม่วงเทา เข้มกว่าพื้นนิดหน่อย มองเห็นแถวชัด
+  metal: 0x5d5f7a,
+  pin: 0xff4f6d,
 };
 
 const VIEW = -1; // มองจากฝั่ง z ติดลบ = ฝั่งประตูคู่ด้านบนที่เดินเข้ามา (เปลี่ยนเป็น 1 ถ้าจะมองจากฝั่งตรงข้าม)
@@ -242,7 +243,7 @@ const seatGeo = mergeGeometries([
 const topMat = new THREE.MeshStandardMaterial({ roughness: 0.55 }); // สีแต่ละโต๊ะมาจาก instance color
 const seatMat = new THREE.MeshStandardMaterial({ color: COLOR.seat, roughness: 0.5 });
 const metalMat = new THREE.MeshStandardMaterial({ color: COLOR.metal, metalness: 0.4, roughness: 0.4 });
-const seamMat = new THREE.MeshBasicMaterial({ color: 0x5a3b24, transparent: true, opacity: 0.35 });
+const seamMat = new THREE.MeshBasicMaterial({ color: 0x2e1a0f, transparent: true, opacity: 0.45 });
 const hitMat = new THREE.MeshBasicMaterial({ visible: false });
 
 const tablesGroup = new THREE.Group();
@@ -361,7 +362,7 @@ const entranceDoors = mainDoor
   ? doors.filter((d) => Math.abs(d.z - mainDoor.z) < 0.5 && Math.abs(d.x - mainDoor.x) < 6)
   : [];
 
-const GUIDE_BLUE = 0x3d9bff;
+const GUIDE_BLUE = 0x2f7bff;
 const GUIDE_WIDTH = 0.5;
 const GUIDE_Y = 0.04;
 
@@ -514,7 +515,7 @@ function setSelected(id) {
   if (focus !== focusOn) {
     focusOn = focus;
     people.setFocus(focus);
-    seatMat.color.set(focus ? 0xebe6df : COLOR.seat);
+    seatMat.color.set(focus ? 0xc4c7e2 : COLOR.seat);
     for (const t of tableList) paint(t.id);
   }
   const t = tableById.get(id);
