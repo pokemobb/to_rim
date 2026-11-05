@@ -955,3 +955,25 @@ body.mascot-on #hint { display: none; }
 @media (min-width: 600px) {
   .dock { left: calc(var(--fl) + var(--dock-gap)); right: calc(var(--fl) + var(--dock-gap)); bottom: 14px; }
 }
+
+/* ---------- ปุ่มซูม 1x 2x 3x มุมขวาบน ---------- */
+.zoom-seg {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top));
+  right: 12px;
+  z-index: 3;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--material-solid);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+.zoom-seg button {
+  width: 36px; height: 36px; min-height: 36px; padding: 0;
+  border-radius: 999px; background: none; box-shadow: none;
+  color: var(--muted); font: 700 13px/1 var(--font); font-variant-numeric: tabular-nums;
+}
+.zoom-seg button.on { background: var(--accent); color: #fff; }
+.zoom-seg button:active { transform: scale(0.92); }
+@media (min-width: 600px) { .zoom-seg { right: calc(var(--fl) + 12px); } }

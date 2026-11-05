@@ -166,9 +166,16 @@ function updateLock() {
 const clampX = (x, half = lock.half) => (half * 2 >= roomW
   ? center.x
   : THREE.MathUtils.clamp(x, room.minX + half - 1, room.maxX - half + 1));
-function sideView(x = center.x) {
-  const target = new THREE.Vector3(clampX(x), 0, lock.z);
-  return { pos: viewFrom(target, lock.d), target };
+// ซูมแล้วเห็นห้องแค่บางส่วนตามแนวลึก: เลื่อนขึ้นลงได้เท่าที่ยังไม่หลุดขอบห้อง
+const clampZ = (z, zoom) => {
+  const slack = (roomD / 2) * (1 - 1 / zoom);
+  return THREE.MathUtils.clamp(z, lock.z - slack, lock.z + slack);
+};
+const HOME_ZOOM = 2; // เปิดมาซูม 2x เห็นแมวชัดกว่ามุมทั้งห้อง
+function sideView(x = center.x, z = lock.z, zoom = HOME_ZOOM) {
+  const d = lock.d / zoom;
+  const target = new THREE.Vector3(clampX(x, d * lock.perMeter), 0, clampZ(z, zoom));
+  return { pos: viewFrom(target, d), target };
 }
 updateLock();
 const flyHome = (ms) => { const v = sideView(); flyTo(v.pos, v.target, ms); };
@@ -202,8 +209,7 @@ function keepInRoom() {
   const t = controls.target;
   const dist = camera.position.distanceTo(t);
   zoomLevel = THREE.MathUtils.clamp(lock.d / dist, 1, MAX_ZOOM);
-  const slack = (roomD / 2) * (1 - 1 / zoomLevel);
-  const z = THREE.MathUtils.clamp(t.z, lock.z - slack, lock.z + slack);
+  const z = clampZ(t.z, zoomLevel);
   panShift.set(clampX(t.x, dist * lock.perMeter) - t.x, -t.y, z - t.z);
   if (panShift.lengthSq() === 0) return;
   t.add(panShift);
@@ -579,7 +585,7 @@ function flyTo(pos, target, ms = 1000) {
 }
 
 function flyToTable(t) {
-  const v = sideView(t.x);
+  const v = sideView(t.x, t.z);
   flyTo(v.pos, v.target);
 }
 
@@ -587,11 +593,14 @@ function flyToTable(t) {
 function flyToRoute(t) {
   if (!t || !entranceDoors.length) return flyHome(1200);
   const door = guidePoints(t)[0];
-  // เล็งกลางระหว่างประตูกับโต๊ะ ถ้าเส้นทางยาวเกินจอ ให้โต๊ะยังอยู่ในจอเสมอ
+  // เล็งกลางระหว่างประตูกับโต๊ะ ถ้าเส้นทางยาวเกินจอ ให้โต๊ะยังอยู่ในจอเสมอ (ทั้งแนวซ้ายขวาและแนวลึก)
   let x = (door.x + t.x) / 2;
-  const room4table = lock.half - 2.5;
-  if (Math.abs(t.x - x) > room4table) x = t.x - Math.sign(t.x - x) * room4table;
-  const v = sideView(x);
+  const roomX = lock.half / HOME_ZOOM - 1.5;
+  if (Math.abs(t.x - x) > roomX) x = t.x - Math.sign(t.x - x) * roomX;
+  let z = door.y * 0.38 + t.z * 0.62; // เยื้องไปทางโต๊ะนิด ป้ายลอยจะได้ไม่ชนการ์ดชื่อด้านบน
+  const roomZ = roomD / (2 * HOME_ZOOM) - 2.5;
+  if (Math.abs(t.z - z) > roomZ) z = t.z - Math.sign(t.z - z) * roomZ;
+  const v = sideView(x, z);
   flyTo(v.pos, v.target, 1200);
 }
 
@@ -771,8 +780,33 @@ function syncDockHeight() {
 // ปุ่มลอย: เลื่อนแผนที่ไปไกลแล้ว กดทีเดียวกลับมาเห็นเส้นทางถึงโต๊ะ
 // แสดงเมื่อมีโต๊ะที่จอง หรือซูมเข้าไปแล้ว: กดทีเดียวกลับมามุมเห็นเส้นทางถึงโต๊ะ (หรือมุมภาพรวม)
 function updateRecenter() {
-  const show = mode !== 'admin' && (!!tableById.get(selectedId) || zoomLevel > 1.15);
+  const show = mode !== 'admin' && (!!tableById.get(selectedId) || Math.abs(zoomLevel - HOME_ZOOM) > 0.15);
   if ($('recenter').hidden === show) $('recenter').hidden = !show;
+  // ปุ่มซูมมุมขวาบน: ไฮไลต์ระดับที่ใกล้ที่สุด
+  const on = Math.round(zoomLevel);
+  const match = Math.abs(zoomLevel - on) < 0.12 ? on : 0;
+  if (match !== shownZoom) {
+    shownZoom = match;
+    for (const b of zoomBtns) {
+      const hit = Number(b.dataset.z) === match;
+      b.classList.toggle('on', hit);
+      b.setAttribute('aria-pressed', String(hit));
+    }
+  }
+  if ($('zoom').hidden !== (mode === 'admin')) $('zoom').hidden = mode === 'admin';
+}
+
+// ปุ่มซูม 1x 2x 3x: ซูมเข้า/ออกตรงกลางจอเดิม
+const zoomBtns = [...document.querySelectorAll('#zoom button')];
+let shownZoom = -1;
+for (const b of zoomBtns) {
+  b.addEventListener('click', () => {
+    const k = Number(b.dataset.z);
+    const d = lock.d / k;
+    const t = controls.target;
+    const target = new THREE.Vector3(clampX(t.x, d * lock.perMeter), 0, clampZ(t.z, k));
+    flyTo(viewFrom(target, d), target, 450);
+  });
 }
 $('recenter').addEventListener('click', () => flyToRoute(tableById.get(selectedId)));
 
@@ -1715,7 +1749,7 @@ function resize() {
   syncZoomLimits();
   if (!flight) {
     keepInRoom();
-    camera.position.copy(viewFrom(controls.target, lock.d));
+    camera.position.copy(viewFrom(controls.target, lock.d / zoomLevel));
   }
   updateMascot();
 }
