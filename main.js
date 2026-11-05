@@ -6,6 +6,7 @@ import { buildScenery, LABEL_HEIGHT } from './scenery.js';
 import { toJson } from './layout-format.js';
 import { createPeople } from './people.js';
 import { CHARACTERS, paintCharacters } from './characters.js';
+import { icon, paintIcons } from './icons.js';
 
 // แบบโต๊ะที่แอดมินเลือกได้ (หน่วยเมตร) — seats คือตำแหน่งเก้าอี้เทียบกับกลางโต๊ะ
 const TYPES = {
@@ -25,12 +26,12 @@ const TYPES = {
 };
 
 const COLOR = {
-  // โต๊ะน้ำตาลช็อกโกแลต (โทนอุ่น) บนพื้นลาเวนเดอร์อ่อน (โทนเย็น) = ตัดกันชัด ไม่กลืนกัน
-  table: 0x7a4a2e,
-  tableHover: 0x9a6340,
+  // โต๊ะสีเขียวทีลสด บนพื้นลาเวนเดอร์อ่อน: เห็นชัด ไม่กลืนกับสัตว์สีขนโทนอุ่น และตัดกับชมพูของโต๊ะที่เลือก
+  table: 0x14a89a,
+  tableHover: 0x2cc2b2,
   tableSelected: 0xff4f6d, // ชมพูแตงโม สีเน้นของแอป เห็นชัดสุดในแผนที่
-  tableFaded: 0xd9bfa6, // โต๊ะอื่นตอนโฟกัสโต๊ะที่จอง: น้ำตาลอ่อน ยังแยกจากพื้นม่วงอ่อนได้
-  seat: 0x8f95c4, // เก้าอี้สีม่วงเทา เข้มกว่าพื้นนิดหน่อย มองเห็นแถวชัด
+  tableFaded: 0xa9ddd5, // โต๊ะอื่นตอนโฟกัสโต๊ะที่จอง: ทีลอ่อน ยังแยกจากพื้นได้
+  seat: 0x9d93e6, // เก้าอี้สีม่วงลาเวนเดอร์ เข้ากับพื้น และตัดกับโต๊ะทีล
   metal: 0x5d5f7a,
   pin: 0xff4f6d,
 };
@@ -243,7 +244,7 @@ const seatGeo = mergeGeometries([
 const topMat = new THREE.MeshStandardMaterial({ roughness: 0.55 }); // สีแต่ละโต๊ะมาจาก instance color
 const seatMat = new THREE.MeshStandardMaterial({ color: COLOR.seat, roughness: 0.5 });
 const metalMat = new THREE.MeshStandardMaterial({ color: COLOR.metal, metalness: 0.4, roughness: 0.4 });
-const seamMat = new THREE.MeshBasicMaterial({ color: 0x2e1a0f, transparent: true, opacity: 0.45 });
+const seamMat = new THREE.MeshBasicMaterial({ color: 0x07463f, transparent: true, opacity: 0.35 });
 const hitMat = new THREE.MeshBasicMaterial({ visible: false });
 
 const tablesGroup = new THREE.Group();
@@ -336,8 +337,10 @@ pin.add(stem, pinDot);
 
 const calloutEl = document.createElement('div');
 calloutEl.className = 'callout';
-calloutEl.innerHTML = '<div class="bubble"><span class="callout-dot"></span><span class="callout-text"></span></div>';
+// หมุดเป็นตัวละครน่ารักโผล่หัวอยู่บนป้าย เพื่อนมองหาโต๊ะได้ง่ายขึ้น
+calloutEl.innerHTML = '<div class="bubble"><span class="callout-char" data-char="cat"></span><span class="callout-text"></span></div>';
 const callout = new CSS2DObject(calloutEl);
+paintCharacters(calloutEl);
 callout.position.y = CALLOUT_Y;
 pin.add(callout);
 
@@ -802,6 +805,7 @@ async function confirmPick() {
   setSelected(id); // อัปเดตชื่อคนเลือกบนป้าย
   fillSheet(id, false);
   toast(groupId ? `ตั้งโต๊ะ ${id} ให้กลุ่มแล้ว ✓` : `จองโต๊ะ ${id} แล้ว ✓`);
+  celebrate();
 }
 
 function cancelPick() {
@@ -851,7 +855,7 @@ function renderPhotoRow() {
   hero.classList.toggle('has', !!p);
   hero.style.backgroundImage = p ? `url("${p.data}")` : '';
   $('photo-album').hidden = !!p; // มีรูปแล้ว เปลี่ยน/เลือกใหม่ได้จากหน้าดูรูปเต็มจอ
-  $('photo-badge').textContent = p ? `📷 ${agoText(p.at)} · แตะดูเต็มจอ` : '';
+  $('photo-badge').innerHTML = p ? `${icon('camera', 14)} ${agoText(p.at)} · แตะดูเต็มจอ` : '';
   $('photo-sub').textContent = groupId ? 'ถ่ายของบนโต๊ะไว้ เพื่อนจะหาเจอง่าย' : 'ถ่ายของบนโต๊ะไว้ให้เพื่อนสังเกตง่าย';
 }
 
@@ -967,6 +971,35 @@ async function applyPhotoMeta(meta, announce) {
 }
 
 let toastTimer;
+// ฉลองตอนทำสำเร็จ: พลุกระดาษสีของแอปโปรยลงมา ตัวละครกระโดดดีใจ
+const CONFETTI = ['#6246ea', '#ff4f6d', '#ffc93c', '#12b886', '#9cc8ff'];
+function celebrate() {
+  navigator.vibrate?.(30);
+  for (const el of [$('walker'), calloutEl.querySelector('.callout-char'), $('mascot-btn')]) {
+    el.classList.remove('hop');
+    void el.offsetWidth;
+    el.classList.add('hop');
+  }
+  setTimeout(() => document.querySelectorAll('.hop').forEach((el) => el.classList.remove('hop')), 1100);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const box = document.createElement('div');
+  box.className = 'confetti';
+  box.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < 46; i++) {
+    const bit = document.createElement('i');
+    bit.style.left = `${Math.random() * 100}%`;
+    bit.style.background = CONFETTI[i % CONFETTI.length];
+    bit.style.setProperty('--dx', `${(Math.random() - 0.5) * 120}px`);
+    bit.style.setProperty('--r', `${(Math.random() - 0.5) * 900}deg`);
+    bit.style.animationDelay = `${Math.random() * 0.25}s`;
+    bit.style.animationDuration = `${1.1 + Math.random() * 0.7}s`;
+    if (i % 3 === 0) bit.style.borderRadius = '50%';
+    box.append(bit);
+  }
+  document.body.append(box);
+  setTimeout(() => box.remove(), 2300);
+}
+
 function toast(text) {
   const el = $('toast');
   el.textContent = text;
@@ -999,7 +1032,7 @@ function renderFood() {
     $('food-slot').textContent = groupMeal.name;
     $('food-slot').classList.add('done');
   }
-  $('food-spin').textContent = $('food-slot').classList.contains('done') ? '🎲 สุ่มใหม่' : '🎲 สุ่มเลย';
+  $('food-spin').innerHTML = `${icon('dice', 18)} ${$('food-slot').classList.contains('done') ? 'สุ่มใหม่' : 'สุ่มเลย'}`;
   $('food-spin').disabled = spinning || !menu.length;
   const chips = $('food-chips');
   chips.replaceChildren(...menu.map((name, i) => {
@@ -1041,7 +1074,7 @@ function spinFood() {
     slot.classList.remove('tick');
     slot.textContent = pick;
     slot.classList.add('done');
-    navigator.vibrate?.(25);
+    celebrate();
     spinning = false;
     groupMeal = null;
     renderFood();
@@ -1074,7 +1107,7 @@ $('food-edit-toggle').addEventListener('click', () => {
   $('food-reset').hidden = !editing;
   $('food-head').hidden = editing;
   $('food-spin').hidden = editing;
-  $('food-edit-toggle').textContent = editing ? '✓ เสร็จ' : '✏️ แก้เมนู';
+  $('food-edit-toggle').innerHTML = editing ? `${icon('check', 18)} เสร็จ` : `${icon('pencil', 18)} แก้เมนู`;
   $('food-edit-toggle').className = editing ? 'primary' : 'ghost';
 });
 $('food-reset').addEventListener('click', () => { menu = DEFAULT_MENU.slice(); saveMenu(); });
@@ -1100,6 +1133,7 @@ let lastMascotText = '';
 let lastContext = '';
 let charIndex = 0;
 paintCharacters();
+paintIcons();
 
 function mascotLine() {
   if (mode === 'friend') {

@@ -68,7 +68,7 @@
             <!-- ปุ่มเล็กมุมขวาบน: ยกเลิก / ดูแบบเพื่อน / แชร์ -->
             <div class="head-actions" id="head-actions">
               <button id="clear" class="icon-btn danger" aria-label="ยกเลิกการจอง" title="ยกเลิกการจอง"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-3 6h12l-1 11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 9Zm4 2v8h1.6v-8H10Zm3.4 0v8H15v-8h-1.6Z" fill="currentColor"/></svg></button>
-              <button id="preview" class="icon-btn" aria-label="ดูแบบที่เพื่อนเห็น" title="ดูแบบที่เพื่อนเห็น">👀</button>
+              <button id="preview" class="icon-btn" aria-label="ดูแบบที่เพื่อนเห็น" title="ดูแบบที่เพื่อนเห็น" data-icon="eye"></button>
               <button id="share" class="icon-btn share" aria-label="แชร์ให้เพื่อน" title="แชร์ให้เพื่อน"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 3.2 7.6 7.6l1.4 1.4 2-2V15h2V7l2 2 1.4-1.4L12 3.2Z" fill="currentColor"/><path d="M5 11v8.5c0 .8.7 1.5 1.5 1.5h11c.8 0 1.5-.7 1.5-1.5V11h-2v8H7v-8H5Z" fill="currentColor"/></svg></button>
             </div>
           </div>
@@ -80,13 +80,13 @@
           <div class="photo-card" id="sheet-share">
             <button id="photo-row" class="photo-hero">
               <span class="photo-empty">
-                <span class="photo-cam" aria-hidden="true">📷</span>
+                <span class="photo-cam" aria-hidden="true" data-icon="camera" data-size="22"></span>
                 <b>ถ่ายรูปโต๊ะ</b>
                 <span id="photo-sub">ให้เพื่อนเห็นว่าโต๊ะเราหน้าตาแบบไหน</span>
               </span>
               <span class="photo-badge" id="photo-badge"></span>
             </button>
-            <button id="photo-album" class="photo-album" aria-label="เลือกรูปจากอัลบั้ม" title="เลือกรูปจากอัลบั้ม">🖼️ อัลบั้ม</button>
+            <button id="photo-album" class="photo-album" aria-label="เลือกรูปจากอัลบั้ม" title="เลือกรูปจากอัลบั้ม" data-icon="album" data-size="16">อัลบั้ม</button>
           </div>
           <!-- ซ่อนแบบมองไม่เห็นแทน hidden: บางเบราว์เซอร์ (เช่น ใน LINE) ไม่ยอมเปิดกล้องจากช่องที่ display:none -->
           <input id="photo-input" class="vh" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
@@ -122,7 +122,7 @@
             </div>
           </div>
           <div id="food-main" class="stack">
-            <div class="slot" id="food-slot" aria-live="polite">🍛</div>
+            <div class="slot" id="food-slot" aria-live="polite"><span class="slot-empty" data-icon="bowl" data-size="34"></span></div>
           </div>
           <div id="food-edit" class="stack" hidden>
             <div class="chips" id="food-chips"></div>
@@ -133,8 +133,8 @@
           </div>
           <div class="actions food-actions">
             <button id="food-reset" class="ghost" hidden>คืนค่าเริ่มต้น</button>
-            <button id="food-edit-toggle" class="ghost">✏️ แก้เมนู</button>
-            <button id="food-spin" class="primary">🎲 สุ่มเลย</button>
+            <button id="food-edit-toggle" class="ghost" data-icon="pencil" data-size="18">แก้เมนู</button>
+            <button id="food-spin" class="primary">สุ่มเลย</button>
           </div>
         </div>
       </section>
