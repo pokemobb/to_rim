@@ -26,14 +26,14 @@ const TYPES = {
 };
 
 const COLOR = {
-  // โต๊ะสีเขียวทีลสด บนพื้นลาเวนเดอร์อ่อน: เห็นชัด ไม่กลืนกับสัตว์สีขนโทนอุ่น และตัดกับชมพูของโต๊ะที่เลือก
-  table: 0x14a89a,
-  tableHover: 0x2cc2b2,
-  tableSelected: 0xff4f6d, // ชมพูแตงโม สีเน้นของแอป เห็นชัดสุดในแผนที่
-  tableFaded: 0xa9ddd5, // โต๊ะอื่นตอนโฟกัสโต๊ะที่จอง: ทีลอ่อน ยังแยกจากพื้นได้
-  seat: 0x9d93e6, // เก้าอี้สีม่วงลาเวนเดอร์ เข้ากับพื้น และตัดกับโต๊ะทีล
-  metal: 0x5d5f7a,
-  pin: 0xff4f6d,
+  // แบบ Apple Maps: โต๊ะสีเทาเข้มบนพื้นขาว ตัดกันชัด และโต๊ะที่เลือกเป็นแดงระบบสีเดียวในแผนที่
+  table: 0x3a3a3c,
+  tableHover: 0x636366,
+  tableSelected: 0xff3b30,
+  tableFaded: 0xc7c7cc, // โต๊ะอื่นตอนโฟกัสโต๊ะที่จอง: เทาอ่อน ยังแยกจากพื้นขาวได้
+  seat: 0xd1d1d6, // เก้าอี้เทาอ่อน ไม่แย่งสายตาจากโต๊ะ
+  metal: 0x8e8e93,
+  pin: 0xff3b30,
 };
 
 const VIEW = -1; // มองจากฝั่ง z ติดลบ = ฝั่งประตูคู่ด้านบนที่เดินเข้ามา (เปลี่ยนเป็น 1 ถ้าจะมองจากฝั่งตรงข้าม)
@@ -244,7 +244,7 @@ const seatGeo = mergeGeometries([
 const topMat = new THREE.MeshStandardMaterial({ roughness: 0.55 }); // สีแต่ละโต๊ะมาจาก instance color
 const seatMat = new THREE.MeshStandardMaterial({ color: COLOR.seat, roughness: 0.5 });
 const metalMat = new THREE.MeshStandardMaterial({ color: COLOR.metal, metalness: 0.4, roughness: 0.4 });
-const seamMat = new THREE.MeshBasicMaterial({ color: 0x07463f, transparent: true, opacity: 0.35 });
+const seamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22 });
 const hitMat = new THREE.MeshBasicMaterial({ visible: false });
 
 const tablesGroup = new THREE.Group();
@@ -412,7 +412,7 @@ const entranceDoors = mainDoor
   ? doors.filter((d) => Math.abs(d.z - mainDoor.z) < 0.5 && Math.abs(d.x - mainDoor.x) < 6)
   : [];
 
-const GUIDE_BLUE = 0x2f7bff;
+const GUIDE_BLUE = 0x007aff;
 const GUIDE_WIDTH = 0.5;
 const GUIDE_Y = 0.04;
 
@@ -565,7 +565,7 @@ function setSelected(id) {
   if (focus !== focusOn) {
     focusOn = focus;
     people.setFocus(focus);
-    seatMat.color.set(focus ? 0xc4c7e2 : COLOR.seat);
+    seatMat.color.set(focus ? 0xe5e5ea : COLOR.seat);
     for (const t of tableList) paint(t.id);
   }
   const t = tableById.get(id);
@@ -1019,7 +1019,7 @@ async function applyPhotoMeta(meta, announce) {
 
 let toastTimer;
 // ฉลองตอนทำสำเร็จ: พลุกระดาษสีของแอปโปรยลงมา ตัวละครกระโดดดีใจ
-const CONFETTI = ['#6246ea', '#ff4f6d', '#ffc93c', '#12b886', '#9cc8ff'];
+const CONFETTI = ['#007aff', '#ff3b30', '#ffcc00', '#34c759', '#ff9500'];
 function celebrate() {
   navigator.vibrate?.(30);
   for (const el of [$('walker'), calloutEl.querySelector('.callout-char'), $('mascot-btn')]) {

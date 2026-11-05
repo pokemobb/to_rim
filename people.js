@@ -1,21 +1,18 @@
 import * as THREE from 'three';
 
-// แมวเหมียวสีพาสเทลในโรงอาหาร: นั่งบนเก้าอี้กินข้าว และเดินสี่ขาไปมาตามทางเดิน
+// แมวเหมียวในโรงอาหาร: นั่งบนเก้าอี้กินข้าว และเดินสี่ขาไปมาตามทางเดิน
 // ใช้ InstancedMesh ทั้งหมด แมวหลายร้อยตัวก็ยังลื่นบนมือถือ
 // (ชื่อไฟล์/ฟังก์ชันยังเป็น people เพื่อให้ main.js เรียกได้เหมือนเดิม)
 
 const C = (c) => new THREE.Color(c);
-// สีขนแมวแบบสุ่ม: สีแมวจริงปนสีพาสเทลสดใส (ไม่มีสีเขียวทีล จะได้ไม่กลืนกับโต๊ะ)
+// สีขนแมวแบบสุ่ม: สีแมวจริงเท่านั้น ไม่เพิ่มสีให้แผนที่วุ่นวาย
 const FURS = [
-  { fur: C('#f7a24b'), patch: C('#fff8ef') }, // ส้ม
-  { fur: C('#ffd59e'), patch: C('#fffaf3') }, // ครีม
+  { fur: C('#f5a04a'), patch: C('#fff8ef') }, // ส้ม
+  { fur: C('#f7d8a8'), patch: C('#fffaf3') }, // ครีม
   { fur: C('#fffaf4'), patch: C('#ffe3cc') }, // ขาว
   { fur: C('#a9adb8'), patch: C('#ffffff') }, // เทา
-  { fur: C('#4a4453'), patch: C('#ffffff') }, // ดำ
-  { fur: C('#ffb3c7'), patch: C('#fff5f8') }, // ชมพู
-  { fur: C('#c6b3ff'), patch: C('#fbf8ff') }, // ม่วงลาเวนเดอร์
-  { fur: C('#9fd0ff'), patch: C('#f6fbff') }, // ฟ้า
-  { fur: C('#ffe27a'), patch: C('#fffdf2') }, // เหลืองเนย
+  { fur: C('#3f3a44'), patch: C('#ffffff') }, // ดำ
+  { fur: C('#b07a4e'), patch: C('#fff3e6') }, // น้ำตาล
 ];
 const EAR_IN = C('#ff9fb5');
 const NOSE = C('#ff7f9e');
