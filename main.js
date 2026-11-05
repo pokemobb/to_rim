@@ -24,7 +24,7 @@ const TYPES = {
 };
 
 const COLOR = {
-  bg: 0xdfe8ee,
+  bg: 0xb4bfae, // ให้กลืนกับพื้นรอบอาคารตรงขอบไกลๆ
   table: 0x8a5a36, // โต๊ะไม้สีน้ำตาลแบบของจริง
   tableHover: 0xae7a4f,
   tableSelected: 0xff4d55,

@@ -236,42 +236,6 @@ function plant() {
 
 const BUILDERS = { shop, dishes, toilet, door, plant };
 
-// ---------- รอบนอกอาคาร: ทางเดินคอนกรีตสีเรียบๆ ออกจากประตู ----------
-function outdoor(scene, layout) {
-  const { room } = layout;
-  const doors = layout.landmarks.filter((l) => l.kind === 'door');
-  const near = (a, b) => Math.abs(a - b) < 0.5;
-  const LEN = 16; // ทางเดินยาวออกไปจากประตู
-
-  // ทางเดินคอนกรีตจากประตูทุกบานที่อยู่บนขอบอาคาร
-  const paths = [];
-  for (const d of doors) {
-    const w = Math.max(d.w, d.d) + 1.2;
-    if (near(d.x, room.minX)) paths.push({ x0: room.minX - LEN, x1: room.minX, z0: d.z - w / 2, z1: d.z + w / 2 });
-    else if (near(d.x, room.maxX)) paths.push({ x0: room.maxX, x1: room.maxX + LEN, z0: d.z - w / 2, z1: d.z + w / 2 });
-    else if (near(d.z, room.maxZ)) paths.push({ x0: d.x - w / 2, x1: d.x + w / 2, z0: room.maxZ, z1: room.maxZ + LEN });
-    else if (near(d.z, room.minZ)) paths.push({ x0: d.x - w / 2, x1: d.x + w / 2, z0: room.minZ - LEN, z1: room.minZ });
-  }
-  // ประตูทางเข้าหลักที่อยู่ลึกเข้ามา (ระหว่างร้านค้ากับที่วางจาน) ต่อทางเดินออกไปด้านหน้า
-  const inner = doors.filter((d) => d.w > d.d && !near(d.z, room.minZ) && !near(d.z, room.maxZ));
-  if (inner.length) {
-    const front = inner.filter((d) => Math.abs(d.z - room.minZ) < Math.abs(d.z - room.maxZ));
-    if (front.length) {
-      const x0 = Math.min(...front.map((d) => d.x - d.w / 2)) - 0.6;
-      const x1 = Math.max(...front.map((d) => d.x + d.w / 2)) + 0.6;
-      paths.push({ x0, x1, z0: room.minZ - LEN, z1: room.minZ });
-    }
-  }
-  const pathMat = mat(0xd9d4ca, { roughness: 0.95 });
-  for (const p of paths) {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(p.x1 - p.x0, p.z1 - p.z0), pathMat);
-    m.rotation.x = -Math.PI / 2;
-    m.position.set((p.x0 + p.x1) / 2, -0.012, (p.z0 + p.z1) / 2);
-    m.receiveShadow = true;
-    scene.add(m);
-  }
-}
-
 // ช่วง [from, to] ที่เหลือหลังเว้นช่อง gaps ออก
 function segments(from, to, gaps) {
   const out = [];
@@ -308,7 +272,7 @@ export function buildScenery(scene, layout) {
   const cx = (room.minX + room.maxX) / 2;
   const cz = (room.minZ + room.maxZ) / 2;
 
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), mat(0xdbe4d5, { roughness: 1 }));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), mat(0xaeb9a8, { roughness: 1 })); // พื้นรอบอาคาร สีทึบเรียบๆ
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.02;
   ground.receiveShadow = true;
@@ -367,7 +331,6 @@ export function buildScenery(scene, layout) {
     scene.add(obj);
   }
 
-  outdoor(scene, layout);
   return floor;
 }
 
