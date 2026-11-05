@@ -142,7 +142,7 @@ function fitDistance(win, checkWidth) {
 function centerTarget(win, d) {
   const want = (win.Y0 + win.Y1) / 2;
   const mid = (dz) => { const b = screenBounds(center.clone().setZ(center.z + dz), d); return (b.y0 + b.y1) / 2 - want; };
-  let a = -span, z = span;
+  let a = -roomD / 2, z = roomD / 2; // ช่วงค้นหาแคบพอที่ห้องยังอยู่หน้ากล้องเสมอ (กว้างไปแล้วภาพพลิก หาค่าผิด)
   const rising = mid(z) > mid(a);
   for (let i = 0; i < 30; i++) {
     const m = (a + z) / 2;
@@ -156,7 +156,8 @@ const lock = { d: 30, z: center.z, half: 10 };
 function updateLock() {
   const win = fitWindow();
   const all = fitDistance(win, true);
-  lock.d = Math.max(all * 0.5, fitDistance(win, false));
+  // 1x = ห้องเต็มช่องแผนที่พอดีตามแนวลึก (ไม่เหลือแถบว่างบนล่าง) เลื่อนซ้าย/ขวาดูส่วนที่เหลือ
+  lock.d = Math.min(all, fitDistance(win, false));
   lock.z = centerTarget(win, lock.d).z;
   const perMeter = Math.tan(THREE.MathUtils.degToRad(fitCam.fov / 2)) * fitCam.aspect; // ครึ่งความกว้างบนพื้น ต่อระยะ 1 เมตร
   lock.half = lock.d * perMeter;
@@ -362,6 +363,7 @@ calloutEl.className = 'callout';
 calloutEl.innerHTML = '<div class="bubble"><span class="callout-char" data-char="cat"></span>'
   + '<span class="callout-label"><small>ที่นั่งของเรา</small><b class="callout-text"></b></span></div>';
 const callout = new CSS2DObject(calloutEl);
+const calloutBubble = calloutEl.querySelector('.bubble');
 paintCharacters(calloutEl);
 callout.position.y = CALLOUT_Y;
 pin.add(callout);
@@ -401,6 +403,9 @@ function updateChats(now) {
   for (const c of chatPool) if (c.obj.visible && (off || now > c.until)) c.obj.visible = false;
   if (off || now < nextChatAt) return;
   nextChatAt = now + (900 + Math.random() * 1500) / zoomLevel; // ซูมใกล้ คุยกันถี่ขึ้น
+  // มุม 1x แผนที่เล็ก คุยพร้อมกันไม่เกิน 2 ป้าย ซูมเข้าแล้วค่อยคุยกันเยอะขึ้น
+  const limit = zoomLevel < 1.5 ? 2 : chatPool.length;
+  if (chatPool.filter((c) => c.obj.visible).length >= limit) return;
   const free = chatPool.find((c) => !c.obj.visible);
   const spots = people.spots();
   if (!free || !spots.length) return;
@@ -1779,6 +1784,9 @@ renderer.setAnimationLoop(() => {
   chevrons.offset.x = -((time * 0.7) % 1); // รอยเท้าแมวเดินจากประตูไปหาโต๊ะ
   const bob = Math.sin(time * 2.2) * 0.12;
   callout.position.y = CALLOUT_Y + bob;
+  // ป้ายโต๊ะที่จอง: มุม 1x ย่อเหลือ 80% ไม่บังโต๊ะรอบๆ ซูม 2x ขึ้นไปเป็นขนาดเต็ม
+  const calloutScale = (0.8 + 0.2 * Math.min(1, zoomLevel - 1)).toFixed(2);
+  if (calloutBubble.style.scale !== calloutScale) calloutBubble.style.scale = calloutScale;
   stem.scale.y = CALLOUT_Y + bob - 0.95;
   const pulse = (time % 1.5) / 1.5;
   ring.scale.setScalar(1 + pulse * 0.35);
