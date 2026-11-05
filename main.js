@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { buildScenery, LABEL_HEIGHT } from './scenery.js';
 import { toJson } from './layout-format.js';
 import { createPeople } from './people.js';
@@ -167,7 +168,15 @@ for (let col = 1; col <= grid.cols; col++) {
 
 // ---------- โต๊ะ (ใช้ InstancedMesh ให้โต๊ะเป็นร้อยตัวยังลื่นบนมือถือ) ----------
 const unitBox = new THREE.BoxGeometry(1, 1, 1);
-const seatGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.45, 16).translate(0, 0.225, 0);
+// เก้าอี้พลาสติกมีพนักพิง: ด้าน +z คือด้านที่หันเข้าหาโต๊ะ
+const box = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
+const seatGeo = mergeGeometries([
+  box(0.42, 0.035, 0.4, 0, 0.45, 0), // ที่นั่ง
+  box(0.4, 0.3, 0.03, 0, 0.66, -0.19), // พนักพิง
+  box(0.035, 0.32, 0.035, -0.18, 0.62, -0.19), // เสาพนัก
+  box(0.035, 0.32, 0.035, 0.18, 0.62, -0.19),
+  ...[[-0.18, -0.17], [0.18, -0.17], [-0.18, 0.17], [0.18, 0.17]].map(([x, z]) => box(0.035, 0.45, 0.035, x, 0.225, z)), // ขา
+]);
 const topMat = new THREE.MeshStandardMaterial({ roughness: 0.55 }); // สีแต่ละโต๊ะมาจาก instance color
 const seatMat = new THREE.MeshStandardMaterial({ color: COLOR.seat, roughness: 0.5 });
 const metalMat = new THREE.MeshStandardMaterial({ color: COLOR.metal, metalness: 0.4, roughness: 0.4 });
@@ -194,7 +203,8 @@ function buildTables() {
 
   topsMesh = new THREE.InstancedMesh(unitBox, topMat, tableList.length);
   hitMesh = new THREE.InstancedMesh(unitBox, hitMat, tableList.length);
-  const legsMesh = new THREE.InstancedMesh(unitBox, metalMat, tableList.length * 2);
+  const frameMesh = new THREE.InstancedMesh(unitBox, metalMat, tableList.length);
+  const legsMesh = new THREE.InstancedMesh(unitBox, metalMat, tableList.length * 4);
   const seatsMesh = new THREE.InstancedMesh(seatGeo, seatMat, seatCount);
 
   const m = new THREE.Matrix4();
@@ -204,21 +214,27 @@ function buildTables() {
   const offset = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0);
   let seatIndex = 0;
+  const yaw = new THREE.Quaternion();
 
   for (const t of tableList) {
     const type = TYPES[t.type] ?? TYPES.long6;
     const place = (dx, dz) => offset.set(dx, 0, dz).applyQuaternion(q).add(pos.set(t.x, 0, t.z));
     q.setFromAxisAngle(up, THREE.MathUtils.degToRad(t.rot ?? 0));
 
-    topsMesh.setMatrixAt(t.index, m.compose(pos.set(t.x, 0.76, t.z), q, scale.set(type.w, 0.08, type.d)));
+    // ท็อปโต๊ะบางๆ + โครงเหล็กใต้ท็อป + ขาเหล็ก 4 ขา
+    topsMesh.setMatrixAt(t.index, m.compose(pos.set(t.x, 0.75, t.z), q, scale.set(type.w, 0.04, type.d)));
+    frameMesh.setMatrixAt(t.index, m.compose(pos.set(t.x, 0.7, t.z), q, scale.set(type.w - 0.14, 0.06, type.d - 0.14)));
     // กล่องล่องหนที่ใหญ่กว่าโต๊ะ ให้แตะบนมือถือได้ง่าย
     hitMesh.setMatrixAt(t.index, m.compose(pos.set(t.x, 0.6, t.z), q, scale.set(type.w + 0.6, 1.2, type.d + 1.3)));
-    [-1, 1].forEach((side, k) => {
-      const p = place(side * (type.w / 2 - 0.15), 0).setY(0.36);
-      legsMesh.setMatrixAt(t.index * 2 + k, m.compose(p, q, scale.set(0.06, 0.72, type.d * 0.8)));
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz], k) => {
+      const p = place(sx * (type.w / 2 - 0.09), sz * (type.d / 2 - 0.09)).setY(0.36);
+      legsMesh.setMatrixAt(t.index * 4 + k, m.compose(p, q, scale.set(0.045, 0.72, 0.045)));
     });
     for (const [sx, sz] of type.seats) {
-      seatsMesh.setMatrixAt(seatIndex++, m.compose(place(sx, sz).clone(), q, scale.set(1, 1, 1)));
+      // หันเก้าอี้เข้าหาโต๊ะ พนักพิงอยู่ด้านนอก
+      const toTable = Math.abs(sz) >= Math.abs(sx) ? (sz > 0 ? Math.PI : 0) : (sx > 0 ? -Math.PI / 2 : Math.PI / 2);
+      yaw.setFromAxisAngle(up, toTable).premultiply(q);
+      seatsMesh.setMatrixAt(seatIndex++, m.compose(place(sx, sz).clone(), yaw, scale.set(1, 1, 1)));
     }
 
     t.tag = label(t.id, 'tag');
@@ -227,7 +243,7 @@ function buildTables() {
     tableById.set(t.id, t);
   }
 
-  for (const mesh of [topsMesh, legsMesh, seatsMesh, hitMesh]) {
+  for (const mesh of [topsMesh, frameMesh, legsMesh, seatsMesh, hitMesh]) {
     mesh.castShadow = mesh.receiveShadow = mesh !== hitMesh;
     mesh.frustumCulled = false;
     tablesGroup.add(mesh);
@@ -806,7 +822,7 @@ function enterFriend() {
     $('ban-warn').textContent = `ลิงก์นี้ส่งมาเมื่อ ${thaiDate(shared.date)} อาจไม่ใช่โต๊ะของวันนี้`;
     $('ban-warn').hidden = false;
   }
-  pillText = `${who} · โต๊ะ ${t.id}${stale ? ' ⚠️' : ''}`;
+  pillText = `${shared.name ? `${shared.name} · ` : ''}โต๊ะ ${t.id}${stale ? ' ⚠️' : ''}`;
   setSelected(t.id);
   setPanel(true);
   setTimeout(() => flyToRoute(t), 500);
