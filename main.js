@@ -28,7 +28,7 @@ const TYPES = {
 const COLOR = {
   // แบบ Apple Maps: โต๊ะสีเทาเข้มบนพื้นขาว ตัดกันชัด และโต๊ะที่เลือกเป็นแดงระบบสีเดียวในแผนที่
   table: 0x3a3a3c,
-  tableHover: 0x636366,
+  tableHover: 0x007aff, // เมาส์ชี้ (บนคอม): โต๊ะเปลี่ยนเป็นสีฟ้าแทนการขึ้นเลขโต๊ะ ไม่บังแมว
   tableSelected: 0xff3b30,
   tableFaded: 0xc7c7cc, // โต๊ะอื่นตอนโฟกัสโต๊ะที่จอง: เทาอ่อน ยังแยกจากพื้นขาวได้
   seat: 0xd1d1d6, // เก้าอี้เทาอ่อน ไม่แย่งสายตาจากโต๊ะ
@@ -717,7 +717,8 @@ if (window.ResizeObserver) new ResizeObserver(() => syncDockHeight()).observe($(
 
 // แผนที่อยู่เฉพาะพื้นที่เหนือแถบด้านล่าง
 function syncDockHeight() {
-  const h = $('dock').hidden ? 0 : $('dock').offsetHeight;
+  // การ์ดลอยเหนือขอบล่าง: นับระยะจากขอบบนการ์ดถึงล่างจอ (รวมช่องว่างใต้การ์ด)
+  const h = $('dock').hidden ? 0 : Math.round(window.innerHeight - $('dock').getBoundingClientRect().top);
   if (document.documentElement.style.getPropertyValue('--dock-h') === `${h}px`) return;
   document.documentElement.style.setProperty('--dock-h', `${h}px`);
   resize();
@@ -1687,9 +1688,8 @@ renderer.setAnimationLoop(() => {
     if (k === 1) flight = null;
   }
 
-  // เลขโต๊ะโชว์เฉพาะตัวที่จอง/เลือกอยู่ (และตัวที่เมาส์ชี้บนคอม) ไม่ให้ลายตา
-  // เลขโต๊ะทั่วไปโชว์แค่ตัวที่เมาส์ชี้ (บนคอม) ส่วนตัวที่เลือกใช้ป้ายลอยแทน
-  for (const t of tableList) t.tag.visible = t.id === hoverId && t.id !== selectedId;
+  // ไม่ขึ้นเลขโต๊ะลอยบนแผนที่ (ไม่บังแมว): เมาส์ชี้ = โต๊ะเปลี่ยนสี ส่วนโต๊ะที่จองใช้ป้ายลอยสีแดง
+  for (const t of tableList) t.tag.visible = false;
   callout.visible = marker.visible && !!selectedId;
 
   people.update(time);

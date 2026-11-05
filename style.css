@@ -931,3 +931,27 @@ body.mascot-on #hint { display: none; }
   80% { opacity: 1; }
   100% { opacity: 0; transform: translateY(calc(-100% - 10px)); }
 }
+
+/* ---------- การ์ดล่างลอย เว้นขอบซ้ายขวาล่าง มุมมนรอบด้าน แบบแผ่นการ์ดใน Apple Maps ---------- */
+:root { --dock-gap: 10px; }
+.dock {
+  left: var(--dock-gap);
+  right: var(--dock-gap);
+  bottom: max(var(--dock-gap), env(safe-area-inset-bottom));
+  border-radius: 28px;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+.dock-body { height: 184px; padding: 14px 16px 6px; }
+.tabbar { padding: 0 12px 10px; gap: 8px; }
+.tab { min-height: 42px; }
+.table-no { font-size: 21px; }
+.photo-hero { height: 94px; border-radius: 16px; }
+.walker { left: 8px; }
+@keyframes walk {
+  0% { left: 16px; }
+  50% { left: calc(100% - 80px); }
+  100% { left: 16px; }
+}
+@media (min-width: 600px) {
+  .dock { left: calc(var(--fl) + var(--dock-gap)); right: calc(var(--fl) + var(--dock-gap)); bottom: 14px; }
+}
