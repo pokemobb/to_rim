@@ -112,37 +112,46 @@ function screenBounds(target, distance) {
   }
   return b;
 }
-function overview() {
-  const Y0 = -0.5, Y1 = 0.8, X = 0.97; // ขอบจอที่ยอมให้ห้องไปถึง (ด้านล่างเว้นไว้ให้แผงเลือกโต๊ะ)
+// ช่องบนจอที่ให้ห้องไปถึงได้ (พิกัด -1..1 ของพื้นที่แผนที่เหนือแถบด้านล่าง) ด้านบนเว้นให้การ์ดชื่อเว็บ
+function fitWindow() {
   fitCam.copy(camera);
   fitCam.aspect = (app.clientWidth || innerWidth) / (app.clientHeight || innerHeight);
   fitCam.updateProjectionMatrix();
-  const target = center.clone();
+  const h = app.clientHeight || innerHeight;
+  return { Y0: -0.94, Y1: 1 - (2 * 74) / h, X: 0.97 };
+}
+// ระยะกล้องที่เล็กที่สุดที่ยังเห็นทั้งห้อง (checkWidth=false = สนใจแค่แนวลึก)
+function fitDistance(win, checkWidth) {
   let lo = 5, hi = 500;
   for (let i = 0; i < 30; i++) {
     const d = (lo + hi) / 2;
-    const b = screenBounds(target, d);
-    if (b.x1 - b.x0 <= 2 * X && b.y1 - b.y0 <= Y1 - Y0) hi = d; else lo = d;
+    const b = screenBounds(center, d);
+    const ok = (!checkWidth || b.x1 - b.x0 <= 2 * win.X) && b.y1 - b.y0 <= win.Y1 - win.Y0;
+    if (ok) hi = d; else lo = d;
   }
-  // เลื่อนจุดมองตามแนวลึก ให้ห้องอยู่กลางช่องที่ว่าง
-  const want = (Y0 + Y1) / 2;
-  const mid = (dz) => { const b = screenBounds(center.clone().setZ(center.z + dz), hi); return (b.y0 + b.y1) / 2 - want; };
+  return hi;
+}
+// เลื่อนจุดมองตามแนวลึก ให้ห้องอยู่กลางช่องที่ว่าง
+function centerTarget(win, d) {
+  const want = (win.Y0 + win.Y1) / 2;
+  const mid = (dz) => { const b = screenBounds(center.clone().setZ(center.z + dz), d); return (b.y0 + b.y1) / 2 - want; };
   let a = -span, z = span;
   const rising = mid(z) > mid(a);
   for (let i = 0; i < 30; i++) {
     const m = (a + z) / 2;
     if ((mid(m) > 0) === rising) z = m; else a = m;
   }
-  target.z += (a + z) / 2;
-  return { pos: viewFrom(target, hi), target, distance: hi };
+  return center.clone().setZ(center.z + (a + z) / 2);
 }
-// ล็อกมุมกล้อง: ระยะซูมคงที่ (ครึ่งหนึ่งของภาพรวม) และเลื่อนได้แค่ซ้าย/ขวา ไม่ขึ้นลง ไม่ซูม
+// ล็อกมุมกล้อง: ระยะซูมคงที่ และเลื่อนได้แค่ซ้าย/ขวา ไม่ขึ้นลง ไม่ซูม
 const lock = { d: 30, z: center.z, half: 10 };
+// ซูมครึ่งหนึ่งของภาพรวม แต่ต้องเห็นห้องครบตามแนวลึกเสมอ (เลื่อนซ้าย/ขวาดูส่วนที่เหลือ)
 function updateLock() {
-  const all = overview();
+  const win = fitWindow();
+  const all = fitDistance(win, true);
+  lock.d = Math.max(all * 0.5, fitDistance(win, false));
+  lock.z = centerTarget(win, lock.d).z;
   const perMeter = Math.tan(THREE.MathUtils.degToRad(fitCam.fov / 2)) * fitCam.aspect; // ครึ่งความกว้างบนพื้น ต่อระยะ 1 เมตร
-  lock.d = all.distance * 0.5;
-  lock.z = all.target.z;
   lock.half = lock.d * perMeter;
 }
 // เลื่อนได้ถึงแค่ขอบห้องพอดีจอ
@@ -553,7 +562,6 @@ canvas.addEventListener('pointerup', (e) => {
     const id = tableAt(e);
     if (id) ownerPick(id);
     else if (sheetPending) cancelPick(); // แตะที่ว่างตอนยังไม่กดจอง = ยกเลิก
-    else if (panelOpen) setPanel(false); // แตะที่ว่าง = ย่อการ์ดเหลือแค่หมุด
   } else if (mode === 'admin') {
     const id = tableAt(e);
     adminSel = id ? tableById.get(id) : cellAt(e);
@@ -572,40 +580,51 @@ canvas.addEventListener('pointermove', (e) => {
 });
 
 // ---------- แผงด้านล่าง: เปิดเป็นการ์ด หรือย่อเหลือป้ายเล็กให้เห็นหมุดเต็มจอ ----------
-let panelOpen = false;
-let foodOpen = false; // การ์ด 🎲 วันนี้กินอะไรดี
-let pillText = '';
-let collapseTimer;
+let tab = 'table'; // แท็บที่เปิดอยู่ในแถบด้านล่าง: 'table' | 'food'
 
-function setPanel(open) {
-  clearTimeout(collapseTimer);
-  panelOpen = open;
-  const active = mode === 'friend' || (mode === 'owner' && !!selectedId);
-  $('sheet').hidden = !(mode === 'owner' && active && open);
-  $('banner').hidden = !(mode === 'friend' && open);
-  $('pill').hidden = !active || open;
-  $('recenter').hidden = $('pill').hidden || !tableById.get(selectedId);
-  $('pill-text').textContent = mode === 'owner' ? `โต๊ะ ${selectedId} · แตะเพื่อแชร์` : pillText;
-  if (open && foodOpen) closeFood(false);
-  if (foodOpen) $('pill').hidden = $('recenter').hidden = true;
-  $('food-btn').hidden = mode === 'admin' || foodOpen || !$('sheet').hidden || !$('banner').hidden;
+// แถบด้านล่างแสดงตลอด: เลือกเนื้อหาของแท็บโต๊ะตามสถานะ
+function setPanel() {
+  $('dock').hidden = mode === 'admin';
+  $('sheet').hidden = !(mode === 'owner' && selectedId);
+  $('banner').hidden = mode !== 'friend';
+  $('table-empty').hidden = !(mode === 'owner' && !selectedId);
+  $('recenter').hidden = mode === 'admin' || !tableById.get(selectedId);
   updateMascot();
+  syncDockHeight();
 }
 
-$('pill').addEventListener('click', () => setPanel(true));
+function switchTab(name) {
+  tab = name;
+  for (const b of document.querySelectorAll('.tab')) {
+    const on = b.dataset.tab === name;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-selected', String(on));
+  }
+  $('tab-table').hidden = name !== 'table';
+  $('tab-food').hidden = name !== 'food';
+  $(`badge-${name}`).hidden = true; // เปิดดูแล้ว ลบจุดแดง
+  if (name === 'food') renderFood();
+}
+for (const b of document.querySelectorAll('.tab')) b.addEventListener('click', () => switchTab(b.dataset.tab));
+if (window.ResizeObserver) new ResizeObserver(() => syncDockHeight()).observe($('dock'));
+
+// แผนที่อยู่เฉพาะพื้นที่เหนือแถบด้านล่าง
+function syncDockHeight() {
+  const h = $('dock').hidden ? 0 : $('dock').offsetHeight;
+  if (document.documentElement.style.getPropertyValue('--dock-h') === `${h}px`) return;
+  document.documentElement.style.setProperty('--dock-h', `${h}px`);
+  resize();
+}
+
 // ปุ่มลอย: เลื่อนแผนที่ไปไกลแล้ว กดทีเดียวกลับมาเห็นเส้นทางถึงโต๊ะ
 $('recenter').addEventListener('click', () => {
   const t = tableById.get(selectedId);
   if (t) flyToRoute(t);
 });
-$('sheet-close').addEventListener('click', () => (sheetPending ? cancelPick() : setPanel(false)));
-$('banner-close').addEventListener('click', () => setPanel(false));
 
-// เริ่มลาก/ซูมแผนที่ = ย่อการ์ดเอง และซ่อนคำแนะนำ
+// เริ่มลากแผนที่ = ซ่อนคำแนะนำด้านบน
 controls.addEventListener('start', () => {
   $('hint').hidden = true;
-  // ยังไม่ได้กดจอง ปล่อยการ์ดค้างไว้ เลื่อนดูรอบๆ ก่อนตัดสินใจได้
-  if (panelOpen && mode !== 'admin' && !sheetPending) setPanel(false);
 });
 
 // ---------- ฝั่งเรา: เลือกแล้วแชร์ ----------
@@ -679,7 +698,7 @@ function applyGroup(state, announce) {
     if (id && !sheetPending) {
       setSelected(id); // อัปเดตชื่อคนเลือกบนป้าย
       fillSheet(id, false);
-      setPanel(panelOpen);
+      setPanel();
     }
     return;
   }
@@ -687,11 +706,12 @@ function applyGroup(state, announce) {
   store.set('torim:pick', id ? { id, date: today() } : null);
   if (announce) {
     toast(id ? `โต๊ะเปลี่ยนเป็น ${id} แล้ว` : 'โต๊ะของกลุ่มถูกยกเลิกแล้ว');
+    if (tab !== 'table') $('badge-table').hidden = false;
   }
   if (sheetPending) return; // กำลังเลือกโต๊ะอยู่ ไม่ขัดจังหวะ
   setSelected(id);
   if (id) fillSheet(id, false);
-  setPanel(panelOpen && !!id);
+  setPanel();
   if (announce && id) flyToRoute(tableById.get(id)); // พาไปดูโต๊ะใหม่ที่เพื่อนเลือก
 }
 
@@ -747,14 +767,17 @@ function fillSheet(id, pending) {
     : `${describe(id)}${byLine}`;
   $('sheet-confirm').hidden = !pending;
   $('sheet-share').hidden = pending;
-  updateMascot();
+  const chip = $('sel-chip');
+  chip.textContent = pending ? 'ยังไม่จอง' : groupId ? '👥 โต๊ะกลุ่ม' : '✓ จองแล้ว';
+  chip.className = `chip-status ${pending ? 'wait' : 'ok'}`;
 }
 
 function ownerPick(id) {
   if (!id) return;
   setSelected(id);
   fillSheet(id, id !== confirmedId);
-  setPanel(true);
+  switchTab('table');
+  setPanel();
   flyToRoute(tableById.get(id)); // เลื่อนซ้าย/ขวาให้เห็นเส้นทางจากประตูถึงโต๊ะ
 }
 
@@ -775,7 +798,7 @@ function cancelPick() {
   sheetPending = false;
   setSelected(confirmedId);
   if (confirmedId) fillSheet(confirmedId, false);
-  setPanel(false);
+  setPanel();
 }
 
 $('pick-ok').addEventListener('click', confirmPick);
@@ -852,21 +875,6 @@ function saveMenu() {
   renderFood();
 }
 
-function openFood() {
-  setPanel(false);
-  foodOpen = true;
-  $('food').hidden = false;
-  setPanel(false); // ซ่อนแคปซูลกับปุ่มลอยระหว่างเปิดการ์ดเมนู
-  renderFood();
-}
-
-function closeFood(restore = true) {
-  foodOpen = false;
-  $('food').hidden = true;
-  $('food-edit').hidden = true;
-  if (restore) setPanel(false);
-}
-
 function spinFood() {
   if (spinning || !menu.length) return;
   spinning = true;
@@ -911,13 +919,22 @@ function applyMeal(meal, announce) {
   if (!meal || meal.date !== today() || meal.at === groupMeal?.at) return;
   groupMeal = meal;
   if (announce && meal.at !== myMealAt) toast(`🎲 เพื่อนสุ่มได้: ${meal.name}`);
-  if (foodOpen && !spinning) renderFood();
+  if (tab === 'food' && !spinning) renderFood();
+  else if (announce && meal.at !== myMealAt) $('badge-food').hidden = false;
 }
 
-$('food-btn').addEventListener('click', openFood);
-$('food-close').addEventListener('click', () => closeFood());
 $('food-spin').addEventListener('click', spinFood);
-$('food-edit-toggle').addEventListener('click', () => { $('food-edit').hidden = !$('food-edit').hidden; });
+// แก้เมนู: สลับช่องสุ่มเป็นรายการเมนู (ความสูงแถบเท่าเดิม)
+$('food-edit-toggle').addEventListener('click', () => {
+  const editing = $('food-edit').hidden;
+  $('food-edit').hidden = !editing;
+  $('food-main').hidden = editing;
+  $('food-reset').hidden = !editing;
+  $('food-head').hidden = editing;
+  $('food-spin').hidden = editing;
+  $('food-edit-toggle').textContent = editing ? '✓ เสร็จ' : '✏️ แก้เมนู';
+  $('food-edit-toggle').className = editing ? 'primary' : 'ghost';
+});
 $('food-reset').addEventListener('click', () => { menu = DEFAULT_MENU.slice(); saveMenu(); });
 function addMenu() {
   const name = $('food-new').value.replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 30);
@@ -929,11 +946,11 @@ function addMenu() {
 $('food-add').addEventListener('click', addMenu);
 $('food-new').addEventListener('keydown', (e) => { if (e.key === 'Enter') addMenu(); });
 
-// ---------- มาสคอต "น้องข้าว": คำแนะนำใต้แผนที่ ----------
+// ---------- มาสคอต "น้องข้าว": คำแนะนำในแท็บโต๊ะ ----------
 const TIPS = [
   'ลากซ้าย–ขวาเพื่อดูทั้งโรงอาหารได้นะ 👈👉',
   'ลูกศรสีฟ้าคือทางเดินจากประตูทางเข้าไปถึงโต๊ะ',
-  'หิวแต่คิดไม่ออก? กด 🎲 มุมซ้ายล่าง เดี๋ยวช่วยสุ่มเมนูให้',
+  'หิวแต่คิดไม่ออก? แตะแท็บ 🎲 กินอะไรดี ด้านล่าง เดี๋ยวช่วยสุ่มเมนูให้',
 ];
 let tipIndex = -1; // -1 = คำแนะนำตามสถานการณ์ตอนนี้
 let lastMascotText = '';
@@ -953,24 +970,10 @@ function mascotLine() {
   return groupId ? 'ใครในกลุ่มก็เลือกโต๊ะได้ แตะโต๊ะที่อยากนั่งเลย' : 'สวัสดี! แตะโต๊ะที่จะนั่ง เดี๋ยวพาเดินจากประตูให้ 🍚';
 }
 
-// วางใต้ขอบหน้าของโรงอาหาร (กล้องล็อกแนวลึกไว้ ขอบนี้จึงอยู่ที่เดิมบนจอเสมอ) ซ่อนเมื่อชนการ์ดด้านล่าง
-const edgePoint = new THREE.Vector3();
+// อยู่ในแท็บโต๊ะตอนยังไม่ได้เลือกโต๊ะ
 function updateMascot() {
-  const el = $('mascot');
-  if (!el || mode === 'admin') {
-    if (el) el.hidden = true;
-    document.body.classList.remove('mascot-on');
-    return;
-  }
-  const v = sideView();
-  fitCam.position.copy(v.pos);
-  fitCam.lookAt(v.target);
-  fitCam.updateMatrixWorld();
-  edgePoint.set(v.target.x, 0, room.minZ).project(fitCam);
-  const top = ((1 - edgePoint.y) / 2) * app.clientHeight + 14;
-  el.style.top = `${Math.round(top)}px`;
-
-  // สถานการณ์เปลี่ยน (เลือก/จองโต๊ะ) กลับมาพูดเรื่องที่ต้องทำตอนนี้ก่อน
+  document.body.classList.toggle('mascot-on', mode !== 'admin' && !params.has('preview'));
+  // สถานการณ์เปลี่ยน กลับมาพูดเรื่องที่ต้องทำตอนนี้ก่อน
   const context = mascotLine();
   if (context !== lastContext) {
     lastContext = context;
@@ -984,16 +987,6 @@ function updateMascot() {
     void bubble.offsetWidth;
     bubble.classList.add('pop');
   }
-
-  // ไม่ให้ทับการ์ด/ปุ่มด้านล่าง
-  el.hidden = false;
-  const bottom = el.getBoundingClientRect().bottom;
-  const blockers = ['sheet', 'banner', 'food', 'pill', 'food-btn', 'recenter']
-    .map((id) => $(id))
-    .filter((b) => b && !b.hidden);
-  const clash = blockers.some((b) => b.getBoundingClientRect().top < bottom + 8);
-  el.hidden = clash;
-  document.body.classList.toggle('mascot-on', !clash && !params.has('preview'));
 }
 
 function nextTip() {
@@ -1035,7 +1028,6 @@ $('share').addEventListener('click', async () => {
   if (navigator.share) {
     try {
       await navigator.share({ title: 'โต๊ะวันนี้', text, url: url.href });
-      setPanel(false);
       return;
     } catch (err) {
       if (err.name === 'AbortError') return;
@@ -1047,7 +1039,6 @@ $('share').addEventListener('click', async () => {
   } catch {
     window.prompt('คัดลอกลิงก์นี้ส่งให้เพื่อน', url.href);
   }
-  setPanel(false);
 });
 
 // ---------- ฝั่งเพื่อน: เปิดจากลิงก์ ----------
@@ -1070,8 +1061,7 @@ function enterFriend() {
   if (!t) {
     $('ban-who').textContent = 'ไม่พบโต๊ะนี้ในผัง';
     $('focus').hidden = true;
-    pillText = `ไม่พบโต๊ะ ${shared.id}`;
-    setPanel(true);
+    setPanel();
     return;
   }
   const who = shared.name || 'เพื่อน';
@@ -1082,12 +1072,9 @@ function enterFriend() {
     $('ban-warn').textContent = `ลิงก์นี้ส่งมาเมื่อ ${thaiDate(shared.date)} อาจไม่ใช่โต๊ะของวันนี้`;
     $('ban-warn').hidden = false;
   }
-  pillText = `${shared.name ? `${shared.name} · ` : ''}โต๊ะ ${t.id}${stale ? ' ⚠️' : ''}`;
   setSelected(t.id);
-  setPanel(true);
+  setPanel();
   setTimeout(() => flyToRoute(t), 500);
-  // ดูชื่อโต๊ะแล้ว ย่อการ์ดเองให้เห็นหมุดชัดๆ (ถ้าลิงก์เก่า ปล่อยค้างไว้ให้อ่านคำเตือน)
-  if (!stale) collapseTimer = setTimeout(() => setPanel(false), 4000);
 }
 
 $('focus').addEventListener('click', () => {
@@ -1368,7 +1355,7 @@ function enterAdmin() {
   $('hint').textContent = 'แตะโต๊ะเพื่อเปลี่ยนแบบ · แตะช่องว่างเพื่อเพิ่มโต๊ะ';
   $('admin').hidden = false;
   $('adm-exit').hidden = false;
-  setPanel(false);
+  setPanel();
   renderAdmin();
 }
 

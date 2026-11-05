@@ -51,7 +51,7 @@ html, body {
   -webkit-text-size-adjust: 100%;
 }
 
-#app { position: fixed; inset: 0; }
+#app { position: fixed; inset: 0 0 var(--dock-h, 0px) 0; }
 #app canvas { display: block; touch-action: none; }
 .labels { position: absolute; inset: 0; pointer-events: none; }
 
@@ -410,18 +410,11 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
 
 /* ---------- มาสคอต "น้องข้าว" ใต้แผนที่ ---------- */
 .mascot {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  max-width: 420px;
-  margin: 0 auto;
   display: flex;
   align-items: center;
   gap: 4px;
-  pointer-events: none;
   animation: rise 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
-.mascot > * { pointer-events: auto; }
 .mascot-art {
   flex: none;
   width: 84px;
@@ -474,3 +467,81 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
 }
 .mascot-bubble.pop { animation: pop 0.3s cubic-bezier(0.2, 1.6, 0.4, 1); }
 body.mascot-on #hint { display: none; }
+
+/* ---------- แถบด้านล่างแบบแอป: เนื้อหาแท็บ + แถบแท็บ ---------- */
+.dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--material);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  border-top: 0.5px solid var(--separator);
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.08);
+}
+.dock-body {
+  max-width: 520px;
+  margin: 0 auto;
+  height: 232px; /* สูงคงที่ทุกแท็บ แผนที่ด้านบนจะได้ไม่กระตุกเวลาเปลี่ยนสถานะ */
+  padding: 16px 16px 10px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.pane { height: 100%; display: flex; flex-direction: column; justify-content: center; }
+.pane-stack { display: grid; gap: 12px; animation: rise 0.28s cubic-bezier(0.2, 0.9, 0.3, 1); }
+.dock .big { font-size: 26px; }
+.food-title { font-size: 20px !important; }
+.chip-status {
+  flex: none;
+  align-self: center;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--muted);
+}
+.chip-status.ok { background: rgba(52, 199, 89, 0.16); color: #1f8a3c; }
+.chip-status.wait { background: var(--orange-tint); color: var(--orange-text); }
+.slot { min-height: 72px; }
+#food-edit .chips { max-height: 74px; }
+.food-actions button { font-size: 16px; }
+
+.tabbar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 2px 12px calc(4px + env(safe-area-inset-bottom));
+  border-top: 0.5px solid var(--separator);
+}
+.tab {
+  position: relative;
+  min-height: 52px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  background: none;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 12px;
+}
+.tab svg { width: 24px; height: 24px; }
+.tab.on { color: var(--blue); }
+.tab:active:not(:disabled) { transform: scale(0.94); filter: none; }
+.badge {
+  position: absolute;
+  top: 7px;
+  left: calc(50% + 9px);
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--red);
+  box-shadow: 0 0 0 2px var(--material-solid);
+}
+.fab { bottom: calc(var(--dock-h, 0px) + 12px); }
+.toast { z-index: 5; }

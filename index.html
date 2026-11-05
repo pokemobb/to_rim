@@ -40,54 +40,19 @@
     <div class="hint" id="hint"></div>
   </header>
 
-  <!-- ฝั่งเรา: เลือกโต๊ะแล้วแชร์ -->
-  <section id="sheet" class="card bottom" hidden>
-    <div class="row">
-      <div>
-        <div class="big">โต๊ะ <span id="sel-id"></span></div>
-        <div class="label" id="sel-sub"></div>
-      </div>
-      <button id="sheet-close" class="icon" aria-label="ย่อ">✕</button>
-    </div>
-    <!-- แตะโต๊ะใหม่: ยืนยันก่อน ค่อยแชร์ -->
-    <div class="actions" id="sheet-confirm" hidden>
-      <button id="pick-cancel" class="ghost">ยกเลิก</button>
-      <button id="pick-ok" class="primary">✓ จองโต๊ะนี้</button>
-    </div>
-    <div class="stack" id="sheet-share">
-      <button id="share" class="primary">แชร์ให้เพื่อน</button>
-      <button id="preview" class="ghost">👀 ดูแบบที่เพื่อนเห็น</button>
-      <button id="clear" class="link">ยกเลิกการจอง</button>
-    </div>
-  </section>
-
-  <!-- ฝั่งเพื่อน: เปิดจากลิงก์ -->
-  <section id="banner" class="card bottom" hidden>
-    <div class="row">
-      <div>
-        <div class="label" id="ban-who"></div>
-        <div class="big">โต๊ะ <span id="ban-id"></span></div>
-        <div class="label" id="ban-sub"></div>
-      </div>
-      <button id="banner-close" class="icon" aria-label="ย่อ">✕</button>
-    </div>
-    <div class="warn" id="ban-warn" hidden></div>
-    <div class="actions">
-      <button id="focus" class="primary">ไปที่โต๊ะ</button>
-      <button id="own" class="ghost">เลือกโต๊ะเอง</button>
-    </div>
-  </section>
-
-  <!-- การ์ดที่ย่อแล้ว เหลือป้ายเล็กๆ แตะเพื่อเปิดอีกครั้ง -->
-  <!-- ปุ่มลอยกลับไปที่โต๊ะ (แบบปุ่มตำแหน่งใน Apple Maps) -->
+  <!-- ปุ่มลอยกลับไปที่โต๊ะ (แบบปุ่มตำแหน่งใน Apple Maps) อยู่เหนือแถบด้านล่าง -->
   <button id="recenter" class="fab" hidden aria-label="กลับไปที่โต๊ะ">
     <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M20.2 3.8 3.9 10.6c-.8.3-.7 1.5.1 1.7l6.6 1.6 1.6 6.6c.2.8 1.4.9 1.7.1L20.7 4.3c.2-.4-.1-.7-.5-.5Z" fill="currentColor"/></svg>
   </button>
-  <button id="pill" class="pill" hidden><span class="dot"></span><span id="pill-text"></span></button>
 
-  <!-- มาสคอต "น้องข้าว" ชามข้าวไข่ดาว คอยให้คำแนะนำใต้แผนที่ (แตะเพื่อดูคำแนะนำถัดไป) -->
-  <div id="mascot" class="mascot" hidden>
-    <button id="mascot-btn" class="mascot-art" aria-label="น้องข้าว แตะเพื่อดูคำแนะนำถัดไป">
+  <!-- แถบด้านล่างแบบแอปมือถือ: แสดงตลอด มี 2 แท็บ -->
+  <nav id="dock" class="dock" aria-label="เมนูหลัก">
+    <div class="dock-body">
+      <!-- แท็บ 1: โต๊ะ -->
+      <section id="tab-table" class="pane" role="tabpanel" aria-labelledby="tabbtn-table">
+        <!-- ยังไม่ได้เลือกโต๊ะ: น้องข้าวช่วยแนะนำ (แตะเพื่อดูคำแนะนำถัดไป) -->
+        <div id="table-empty" class="mascot">
+          <button id="mascot-btn" class="mascot-art" aria-label="น้องข้าว แตะเพื่อดูคำแนะนำถัดไป">
       <svg viewBox="0 0 120 120" aria-hidden="true">
         <ellipse cx="60" cy="113" rx="30" ry="4.5" fill="rgba(0,0,0,.13)"/>
         <g class="wave">
@@ -119,32 +84,84 @@
         <path d="M55 87 Q60 93 65 87" stroke="#2b2320" stroke-width="2.6" fill="none" stroke-linecap="round"/>
         <circle cx="15" cy="76" r="6.5" fill="#ff9677"/>
       </svg>
-    </button>
-    <div class="mascot-bubble" id="mascot-text" aria-live="polite"></div>
-  </div>
+          </button>
+          <div class="mascot-bubble" id="mascot-text" aria-live="polite"></div>
+        </div>
 
-  <!-- 🎲 วันนี้กินอะไรดี -->
-  <button id="food-btn" class="fab fab-left" hidden aria-label="วันนี้กินอะไรดี">🎲</button>
-  <section id="food" class="card bottom" hidden>
-    <div class="row">
-      <div>
-        <div class="big food-title">วันนี้กินอะไรดี</div>
-        <div class="label" id="food-sub"></div>
-      </div>
-      <button id="food-close" class="icon" aria-label="ปิด">✕</button>
+        <!-- ฝั่งเรา: เลือกโต๊ะแล้วจอง/แชร์ -->
+        <div id="sheet" class="pane-stack" hidden>
+          <div class="row">
+            <div>
+              <div class="big">โต๊ะ <span id="sel-id"></span></div>
+              <div class="label" id="sel-sub"></div>
+            </div>
+            <span class="chip-status" id="sel-chip"></span>
+          </div>
+          <div class="actions" id="sheet-confirm" hidden>
+            <button id="pick-cancel" class="ghost">ยกเลิก</button>
+            <button id="pick-ok" class="primary">✓ จองโต๊ะนี้</button>
+          </div>
+          <div class="stack" id="sheet-share">
+            <button id="share" class="primary">แชร์ให้เพื่อน</button>
+            <div class="actions">
+              <button id="preview" class="ghost">👀 ที่เพื่อนเห็น</button>
+              <button id="clear" class="ghost danger">ยกเลิกการจอง</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ฝั่งเพื่อน: เปิดจากลิงก์ -->
+        <div id="banner" class="pane-stack" hidden>
+          <div>
+            <div class="label" id="ban-who"></div>
+            <div class="big">โต๊ะ <span id="ban-id"></span></div>
+            <div class="label" id="ban-sub"></div>
+          </div>
+          <div class="warn" id="ban-warn" hidden></div>
+          <div class="actions">
+            <button id="focus" class="primary">ไปที่โต๊ะ</button>
+            <button id="own" class="ghost">เลือกโต๊ะเอง</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- แท็บ 2: วันนี้กินอะไรดี -->
+      <section id="tab-food" class="pane" role="tabpanel" aria-labelledby="tabbtn-food" hidden>
+        <div class="pane-stack">
+          <div id="food-head">
+            <div class="big food-title">วันนี้กินอะไรดี</div>
+            <div class="label" id="food-sub"></div>
+          </div>
+          <div id="food-main" class="stack">
+            <div class="slot" id="food-slot" aria-live="polite">🍛</div>
+          </div>
+          <div id="food-edit" class="stack" hidden>
+            <div class="chips" id="food-chips"></div>
+            <div class="share-row">
+              <input id="food-new" placeholder="เพิ่มเมนู เช่น ข้าวขาหมู" maxlength="30" aria-label="เพิ่มเมนู" enterkeyhint="done">
+              <button id="food-add" class="ghost">เพิ่ม</button>
+            </div>
+          </div>
+          <div class="actions food-actions">
+            <button id="food-reset" class="ghost" hidden>คืนค่าเริ่มต้น</button>
+            <button id="food-edit-toggle" class="ghost">✏️ แก้เมนู</button>
+            <button id="food-spin" class="primary">🎲 สุ่มเลย</button>
+          </div>
+        </div>
+      </section>
     </div>
-    <div class="slot" id="food-slot" aria-live="polite">🍛</div>
-    <button id="food-spin" class="primary">🎲 สุ่มเลย</button>
-    <button id="food-edit-toggle" class="link plain">แก้รายการเมนู</button>
-    <div id="food-edit" class="stack" hidden>
-      <div class="chips" id="food-chips"></div>
-      <div class="share-row">
-        <input id="food-new" placeholder="เพิ่มเมนู เช่น ข้าวขาหมู" maxlength="30" aria-label="เพิ่มเมนู" enterkeyhint="done">
-        <button id="food-add" class="ghost">เพิ่ม</button>
-      </div>
-      <button id="food-reset" class="link plain">คืนรายการเริ่มต้น</button>
+
+    <div class="tabbar" role="tablist">
+      <button id="tabbtn-table" class="tab on" role="tab" aria-selected="true" aria-controls="tab-table" data-tab="table">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c-4 0-7 3-7 7 0 5.2 6.1 11.3 6.4 11.6.3.3.9.3 1.2 0 .3-.3 6.4-6.4 6.4-11.6 0-4-3-7-7-7Zm0 9.8a2.8 2.8 0 1 1 0-5.6 2.8 2.8 0 0 1 0 5.6Z" fill="currentColor"/></svg>
+        <span>โต๊ะ</span><i class="badge" id="badge-table" hidden></i>
+      </button>
+      <button id="tabbtn-food" class="tab" role="tab" aria-selected="false" aria-controls="tab-food" data-tab="food">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="8.5" cy="8.5" r="1.6" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.6" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.6" fill="currentColor"/></svg>
+        <span>กินอะไรดี</span><i class="badge" id="badge-food" hidden></i>
+      </button>
     </div>
-  </section>
+  </nav>
 
   <!-- แอดมิน: เปิดด้วย ?admin -->
   <section id="admin" class="card bottom" hidden>
