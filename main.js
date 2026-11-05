@@ -171,7 +171,7 @@ const clampZ = (z, zoom) => {
   const slack = (roomD / 2) * (1 - 1 / zoom);
   return THREE.MathUtils.clamp(z, lock.z - slack, lock.z + slack);
 };
-const HOME_ZOOM = 2; // เปิดมาซูม 2x เห็นแมวชัดกว่ามุมทั้งห้อง
+const HOME_ZOOM = 1; // เปิดมาที่มุมปกติ (1x) แล้วค่อยกดซูมดูแมวใกล้ๆ
 function sideView(x = center.x, z = lock.z, zoom = HOME_ZOOM) {
   const d = lock.d / zoom;
   const target = new THREE.Vector3(clampX(x, d * lock.perMeter), 0, clampZ(z, zoom));
