@@ -73,6 +73,7 @@
     { "col": 11, "row": 3, "type": "long6" },
     { "col": 12, "row": 3, "type": "long6" },
     { "col": 13, "row": 3, "type": "long6" },
+    { "col": 14, "row": 3, "type": "square4" },
     { "col": 1, "row": 4, "type": "long6" },
     { "col": 2, "row": 4, "type": "long6" },
     { "col": 3, "row": 4, "type": "long6" },
