@@ -586,12 +586,12 @@ body.mascot-on #hint { display: none; }
 .photo-view {
   position: fixed;
   inset: 0;
-  z-index: 8;
+  z-index: 30;
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 12px;
   padding: calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));
-  background: rgba(10, 10, 12, 0.94);
+  background: #0f0c1f; /* ทึบ ไม่ให้ปุ่มของแถบล่างโผล่ซ้อนขึ้นมา */
   color: #fff;
   animation: rise 0.25s ease;
 }
@@ -641,4 +641,77 @@ body.mascot-on #hint { display: none; }
   .mascot-bubble, .photo-row, .slot, .chip, .ghost { background: var(--material-solid); }
   .mascot-bubble::before { border-right-color: var(--material-solid); }
   .tab { color: var(--muted); }
+}
+
+/* ---------- การ์ดโต๊ะ: รูปเป็นพระเอก ปุ่มแชร์เล็กมุมขวาบน ---------- */
+.table-head { align-items: flex-start; }
+.table-title { min-width: 0; }
+.table-title .one-line { margin-top: 2px; }
+.head-actions { display: flex; gap: 6px; flex: none; }
+.icon-btn {
+  width: 40px; height: 40px; min-height: 40px; padding: 0;
+  display: grid; place-items: center;
+  border-radius: 999px; font-size: 18px;
+  background: #fff; color: var(--text);
+  box-shadow: 0 2px 8px rgba(var(--tint), 0.12);
+}
+.icon-btn.danger { color: var(--pink); }
+.icon-btn.share { background: var(--accent); color: #fff; box-shadow: 0 4px 12px rgba(98, 70, 234, 0.35); }
+.photo-card { position: relative; }
+.photo-hero {
+  width: 100%; height: 132px; min-height: 0; padding: 0;
+  display: grid; place-items: center;
+  border-radius: 22px;
+  background: #fff center / cover no-repeat;
+  border: 2px dashed rgba(98, 70, 234, 0.35);
+  color: var(--text); font-weight: 400;
+  overflow: hidden; position: relative;
+}
+.photo-hero.has { border: 0; box-shadow: 0 6px 18px rgba(var(--tint), 0.2); }
+.photo-hero.has .photo-empty { display: none; }
+.photo-empty { display: grid; justify-items: center; gap: 2px; }
+.photo-empty b { font-size: 16px; font-weight: 700; color: var(--accent); }
+.photo-empty span { font-size: 13px; color: var(--muted); }
+.photo-cam { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 999px; background: var(--accent-tint); font-size: 24px; margin-bottom: 2px; }
+.photo-badge {
+  position: absolute; left: 10px; bottom: 10px;
+  padding: 5px 10px; border-radius: 999px;
+  background: rgba(15, 12, 31, 0.6); color: #fff;
+  font-size: 12px; font-weight: 600;
+}
+.photo-badge:empty { display: none; }
+.photo-hero.loading { animation: pulse 1s ease-in-out infinite; }
+.photo-album {
+  position: absolute; right: 10px; top: 10px;
+  min-height: 32px; padding: 0 12px; font-size: 13px;
+  border-radius: 999px; background: var(--accent-tint); color: var(--accent);
+}
+
+/* ---------- เพื่อนตัวเล็กเดินไปมาบนขอบการ์ด ---------- */
+.walker {
+  position: absolute; top: -36px; left: 0;
+  width: 42px; height: 42px;
+  pointer-events: none;
+  animation: walk 22s linear infinite;
+}
+.walker-art { width: 42px; height: 42px; animation: step 0.45s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+@keyframes walk {
+  0% { transform: translateX(18px); }
+  50% { transform: translateX(calc(100vw - 60px)); }
+  100% { transform: translateX(18px); }
+}
+@keyframes step {
+  from { transform: rotate(-6deg) translateY(0); }
+  to { transform: rotate(6deg) translateY(-3px); }
+}
+@media (min-width: 560px) {
+  @keyframes walk {
+    0% { transform: translateX(calc(50vw - 240px)); }
+    50% { transform: translateX(calc(50vw + 200px)); }
+    100% { transform: translateX(calc(50vw - 240px)); }
+  }
+}
+@media (prefers-reduced-motion: reduce) { .walker, .walker-art { animation: none; } }
+@media (prefers-color-scheme: dark) {
+  .icon-btn:not(.share), .photo-hero { background-color: var(--material-solid); }
 }

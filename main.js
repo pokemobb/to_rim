@@ -686,7 +686,9 @@ const agoText = (at) => {
 };
 
 function updateGroupUi() {
-  $('share').textContent = groupId ? 'ส่งลิงก์กลุ่ม' : 'แชร์ให้เพื่อน';
+  const shareLabel = groupId ? 'ส่งลิงก์กลุ่ม' : 'แชร์ให้เพื่อน';
+  $('share').setAttribute('aria-label', shareLabel);
+  $('share').title = shareLabel;
   $('preview').hidden = !!groupId; // ในกลุ่ม ทุกคนเห็นหน้าเดียวกับเราอยู่แล้ว
   const clearLabel = groupId ? 'ยกเลิกโต๊ะของทั้งกลุ่ม' : 'ยกเลิกการจอง';
   $('clear').setAttribute('aria-label', clearLabel);
@@ -776,6 +778,7 @@ function fillSheet(id, pending) {
     : `${pending ? describe(id) : describeShort(id)}${byLine}`;
   $('sheet-confirm').hidden = !pending;
   $('sheet-share').hidden = pending;
+  $('head-actions').hidden = pending;
   renderPhotoRow();
 }
 
@@ -844,14 +847,12 @@ const currentPhoto = () => (photo?.data && photo.date === today() && photo.table
 
 function renderPhotoRow() {
   const p = currentPhoto();
-  const thumb = $('photo-thumb');
-  thumb.classList.toggle('has', !!p);
+  const hero = $('photo-row');
+  hero.classList.toggle('has', !!p);
+  hero.style.backgroundImage = p ? `url("${p.data}")` : '';
   $('photo-album').hidden = !!p; // มีรูปแล้ว เปลี่ยน/เลือกใหม่ได้จากหน้าดูรูปเต็มจอ
-  thumb.style.backgroundImage = p ? `url("${p.data}")` : '';
-  $('photo-title').textContent = p ? 'รูปโต๊ะ' : 'ถ่ายรูปโต๊ะ';
-  $('photo-sub').textContent = p
-    ? `อัปเดต ${agoText(p.at)} · แตะเพื่อดูเต็มจอ`
-    : groupId ? 'ถ่ายของบนโต๊ะไว้ เพื่อนจะหาเจอง่าย' : 'ถ่ายของบนโต๊ะไว้ให้เพื่อนสังเกตง่าย';
+  $('photo-badge').textContent = p ? `📷 ${agoText(p.at)} · แตะดูเต็มจอ` : '';
+  $('photo-sub').textContent = groupId ? 'ถ่ายของบนโต๊ะไว้ เพื่อนจะหาเจอง่าย' : 'ถ่ายของบนโต๊ะไว้ให้เพื่อนสังเกตง่าย';
 }
 
 // ย่อรูปในเครื่องก่อนส่ง (ด้านยาวไม่เกิน ~1000px, JPEG) ให้ไฟล์เล็กและโหลดเร็ว
@@ -1148,6 +1149,15 @@ function nextTip() {
 }
 $('mascot-btn').addEventListener('click', nextTip);
 $('mascot-bubble').addEventListener('click', nextTip);
+
+// เพื่อนตัวเล็กที่เดินไปมาบนขอบการ์ด: เดินครบหนึ่งรอบแล้วสลับเป็นตัวถัดไป
+let walkerIndex = 1;
+$('walker').addEventListener('animationiteration', (e) => {
+  if (e.animationName !== 'walk') return;
+  walkerIndex = (walkerIndex + 1) % CHARACTERS.length;
+  $('walker').querySelector('.walker-art').dataset.char = CHARACTERS[walkerIndex].id;
+  paintCharacters($('walker'));
+});
 
 function shareUrl() {
   const url = new URL(location.pathname, location.origin);
