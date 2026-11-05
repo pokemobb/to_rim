@@ -69,6 +69,10 @@ const describe = (id) => {
   const [col, row] = id.split('-');
   return `แถว ${col} · ตัวที่ ${row} นับจากประตูทางเข้า`;
 };
+const describeShort = (id) => {
+  const [col, row] = id.split('-');
+  return `แถว ${col} · ตัวที่ ${row}`;
+};
 
 // ---------- ฉาก ----------
 const app = $('app');
@@ -682,7 +686,9 @@ const agoText = (at) => {
 function updateGroupUi() {
   $('share').textContent = groupId ? 'ส่งลิงก์กลุ่ม' : 'แชร์ให้เพื่อน';
   $('preview').hidden = !!groupId; // ในกลุ่ม ทุกคนเห็นหน้าเดียวกับเราอยู่แล้ว
-  $('clear').textContent = groupId ? 'ยกเลิกโต๊ะ (ทุกคนในกลุ่ม)' : 'ยกเลิกการจอง';
+  const clearLabel = groupId ? 'ยกเลิกโต๊ะของทั้งกลุ่ม' : 'ยกเลิกการจอง';
+  $('clear').setAttribute('aria-label', clearLabel);
+  $('clear').title = clearLabel;
   if (mode === 'owner') {
     $('hint').textContent = groupId
       ? '👥 ใครในกลุ่มก็เลือกหรือเปลี่ยนโต๊ะได้ ทุกคนเห็นเหมือนกัน'
@@ -722,6 +728,7 @@ async function pollGroup(first = false) {
     const state = await groupApi('GET');
     if (groupUnavailable(state)) return leaveGroup();
     if (!state.error) applyMeal(state.meal, !first);
+    if (!state.error) applyPhotoMeta(state.photo, !first);
     if (!state.error && (first || state.at !== groupState?.at)) {
       applyGroup(state, !first && groupState !== null);
       const t = tableById.get(confirmedId);
@@ -763,13 +770,14 @@ function fillSheet(id, pending) {
     ? ` · อัปเดต ${agoText(groupState.at)}`
     : '';
   $('sel-sub').textContent = pending && confirmedId
-    ? `เปลี่ยนจากโต๊ะ ${confirmedId} ที่จองไว้${groupId ? ' (ทุกคนในกลุ่มจะเห็น)' : ''}`
-    : `${describe(id)}${byLine}`;
+    ? `เปลี่ยนจากโต๊ะ ${confirmedId}${groupId ? ' · ทุกคนในกลุ่มจะเห็น' : ''}`
+    : `${pending ? describe(id) : describeShort(id)}${byLine}`;
   $('sheet-confirm').hidden = !pending;
   $('sheet-share').hidden = pending;
   const chip = $('sel-chip');
   chip.textContent = pending ? 'ยังไม่จอง' : groupId ? '👥 โต๊ะกลุ่ม' : '✓ จองแล้ว';
   chip.className = `chip-status ${pending ? 'wait' : 'ok'}`;
+  renderPhotoRow();
 }
 
 function ownerPick(id) {
@@ -818,11 +826,139 @@ function enterOwner() {
 }
 
 $('clear').addEventListener('click', async () => {
+  const ask = groupId ? `ยกเลิกโต๊ะ ${confirmedId} ของทั้งกลุ่มใช่ไหม?` : `ยกเลิกการจองโต๊ะ ${confirmedId} ใช่ไหม?`;
+  if (!window.confirm(ask)) return;
   if (groupId && !(await saveGroupTable(null))) return;
   confirmedId = null;
   store.set('torim:pick', null);
   cancelPick();
 });
+
+// ---------- 📷 รูปโต๊ะ: ถ่ายของบนโต๊ะไว้ให้เพื่อนสังเกตง่าย ----------
+// ในกลุ่ม: เก็บใน Redis ของเว็บ (หมดอายุเองหลัง 18 ชม.) ไม่มีกลุ่ม: เก็บไว้ในเครื่องนี้
+const PHOTO_KEY = 'torim:photo';
+let photo = groupId ? null : store.get(PHOTO_KEY); // { table, date, at, data }
+let photoMetaAt = 0;
+let myPhotoAt = 0;
+
+const currentPhoto = () => (photo?.data && photo.date === today() && photo.table === confirmedId ? photo : null);
+
+function renderPhotoRow() {
+  const p = currentPhoto();
+  const thumb = $('photo-thumb');
+  thumb.classList.toggle('has', !!p);
+  thumb.style.backgroundImage = p ? `url("${p.data}")` : '';
+  $('photo-title').textContent = p ? 'รูปโต๊ะ' : 'ถ่ายรูปโต๊ะ';
+  $('photo-sub').textContent = p
+    ? `อัปเดต ${agoText(p.at)} · แตะเพื่อดูเต็มจอ`
+    : groupId ? 'ถ่ายของบนโต๊ะไว้ เพื่อนจะหาเจอง่าย' : 'ถ่ายของบนโต๊ะไว้ให้เพื่อนสังเกตง่าย';
+}
+
+// ย่อรูปในเครื่องก่อนส่ง (ด้านยาวไม่เกิน ~1000px, JPEG) ให้ไฟล์เล็กและโหลดเร็ว
+async function shrinkPhoto(file) {
+  const src = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, bad) => {
+      const i = new Image();
+      i.onload = () => ok(i);
+      i.onerror = bad;
+      i.src = src;
+    });
+    let side = 1000;
+    let quality = 0.75;
+    let data = '';
+    for (let k = 0; k < 6; k++) {
+      const scale = Math.min(1, side / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * scale);
+      c.height = Math.round(img.naturalHeight * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      data = c.toDataURL('image/jpeg', quality);
+      if (data.length <= 380000) break;
+      side *= 0.8;
+      quality = Math.max(0.5, quality - 0.07);
+    }
+    return data;
+  } finally {
+    URL.revokeObjectURL(src);
+  }
+}
+
+async function savePhoto(data) {
+  const row = $('photo-row');
+  row.classList.add('loading');
+  row.disabled = true;
+  if (groupId) {
+    const res = await groupApi('POST', { photo: data, table: confirmedId, date: today() });
+    if (res.photo) {
+      photo = data ? { ...res.photo, data } : null;
+      myPhotoAt = photoMetaAt = res.photo.at;
+      toast(data ? 'เพิ่มรูปโต๊ะแล้ว เพื่อนในกลุ่มเห็นแล้ว 📷' : 'ลบรูปแล้ว');
+    } else {
+      toast(res.error === 413 ? 'รูปใหญ่เกินไป ลองรูปอื่นนะ' : 'ส่งรูปไม่สำเร็จ ลองอีกครั้ง');
+    }
+  } else {
+    photo = data ? { table: confirmedId, date: today(), at: Date.now(), data } : null;
+    store.set(PHOTO_KEY, photo);
+    toast(data ? 'เก็บรูปไว้ในเครื่องนี้แล้ว 📷' : 'ลบรูปแล้ว');
+  }
+  row.classList.remove('loading');
+  row.disabled = false;
+  renderPhotoRow();
+}
+
+$('photo-row').addEventListener('click', () => (currentPhoto() ? openPhoto() : $('photo-input').click()));
+$('photo-input').addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = ''; // เลือกรูปเดิมซ้ำได้
+  if (!file || !confirmedId) return;
+  closePhoto();
+  try {
+    await savePhoto(await shrinkPhoto(file));
+  } catch {
+    toast('เปิดรูปนี้ไม่ได้ ลองรูปอื่นนะ');
+  }
+});
+
+function openPhoto() {
+  const p = currentPhoto();
+  if (!p) return;
+  $('photo-img').src = p.data;
+  $('photo-view-title').textContent = `โต๊ะ ${p.table}`;
+  $('photo-view-sub').textContent = `อัปเดต ${agoText(p.at)}`;
+  $('photo-view').hidden = false;
+}
+function closePhoto() {
+  $('photo-view').hidden = true;
+}
+$('photo-close').addEventListener('click', closePhoto);
+$('photo-retake').addEventListener('click', () => $('photo-input').click());
+$('photo-delete').addEventListener('click', async () => {
+  if (!window.confirm('ลบรูปโต๊ะนี้ใช่ไหม?')) return;
+  closePhoto();
+  await savePhoto(null);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePhoto(); });
+
+// รูปจากกลุ่ม: ตอนเช็กปกติได้แค่เวลาอัปเดต ถ้าเปลี่ยนค่อยโหลดตัวรูป
+async function applyPhotoMeta(meta, announce) {
+  if (!meta || meta.date !== today() || meta.at === photoMetaAt) return;
+  photoMetaAt = meta.at;
+  if (!meta.table) {
+    photo = null;
+    renderPhotoRow();
+    return;
+  }
+  if (meta.at === myPhotoAt) return;
+  try {
+    const res = await fetch(`api/group?g=${groupId}&photo=1`, { cache: 'no-store' });
+    const body = res.ok ? await res.json() : null;
+    if (!body?.photo?.data) return;
+    photo = body.photo;
+    renderPhotoRow();
+    if (announce && photo.table === confirmedId) toast('📷 เพื่อนเพิ่มรูปโต๊ะแล้ว แตะดูได้ในแท็บโต๊ะ');
+  } catch {}
+}
 
 let toastTimer;
 function toast(text) {
@@ -951,6 +1087,7 @@ const TIPS = [
   'ลากซ้าย–ขวาเพื่อดูทั้งโรงอาหารได้นะ 👈👉',
   'ลูกศรสีฟ้าคือทางเดินจากประตูทางเข้าไปถึงโต๊ะ',
   'หิวแต่คิดไม่ออก? แตะแท็บ 🎲 กินอะไรดี ด้านล่าง เดี๋ยวช่วยสุ่มเมนูให้',
+  'จองโต๊ะแล้วถ่ายรูปโต๊ะไว้ 📷 เพื่อนจะหาเจอง่ายขึ้น',
 ];
 let tipIndex = -1; // -1 = คำแนะนำตามสถานการณ์ตอนนี้
 let lastMascotText = '';

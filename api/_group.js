@@ -6,6 +6,9 @@ const GROUP_RE = /^[a-z0-9]{6,16}$/;
 const TABLE_RE = /^\d{1,2}-\d{1,2}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const KEEP_SECONDS = 60 * 60 * 24 * 60; // กลุ่มที่ไม่มีใครแตะเลย 60 วันจะหายไปเอง
+const PHOTO_SECONDS = 60 * 60 * 18; // รูปโต๊ะใช้แค่วันนั้น ลบเองหลัง 18 ชม.
+const PHOTO_MAX = 400_000; // รูป JPEG ที่ย่อในเครื่องแล้ว (base64) ไม่เกินราว 300 KB
+const PHOTO_RE = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/;
 
 function redisConfig(env) {
   const url = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL;
@@ -29,6 +32,8 @@ const cleanName = (name, max = 20) => String(name ?? '').replace(/[\u0000-\u001f
 // GET: { g }  → โต๊ะล่าสุดของกลุ่ม
 // POST: { g, table, date, by } → ตั้งโต๊ะใหม่ (table = null คือยกเลิก)
 // POST: { g, meal, date }      → เมนูที่สุ่มได้วันนี้ (เก็บแยก key ไม่ไปทับโต๊ะ)
+// GET:  { g, photo: 1 }         → รูปโต๊ะของวันนี้ (แยกจาก GET ปกติ เพราะรูปใหญ่ ไม่ให้ดึงทุกครั้งที่เช็ก)
+// POST: { g, photo, table, date } → ตั้งรูปโต๊ะ (photo = null คือลบรูป)
 export async function handleGroup(method, input, env, fetchImpl = fetch) {
   const config = redisConfig(env);
   if (!config) return { status: 503, body: { error: 'not-configured' } };
@@ -37,12 +42,39 @@ export async function handleGroup(method, input, env, fetchImpl = fetch) {
   if (!GROUP_RE.test(g)) return { status: 400, body: { error: 'bad-group' } };
   const key = `torim:group:${g}`;
   const mealKey = `torim:meal:${g}`;
+  const photoKey = `torim:photo:${g}`;
+  const photoMetaKey = `torim:photometa:${g}`;
 
   try {
+    if (method === 'GET' && input.photo) {
+      const raw = await redis(config, ['GET', photoKey], fetchImpl);
+      return { status: 200, body: { photo: raw ? JSON.parse(raw) : null } };
+    }
     if (method === 'GET') {
-      const [raw, rawMeal] = await redis(config, ['MGET', key, mealKey], fetchImpl);
+      const [raw, rawMeal, rawPhoto] = await redis(config, ['MGET', key, mealKey, photoMetaKey], fetchImpl);
       const meal = rawMeal ? JSON.parse(rawMeal) : null;
-      return { status: 200, body: { ...empty, ...(raw ? JSON.parse(raw) : {}), meal } };
+      const photo = rawPhoto ? JSON.parse(rawPhoto) : null; // แค่ { table, date, at } ไม่มีตัวรูป
+      return { status: 200, body: { ...empty, ...(raw ? JSON.parse(raw) : {}), meal, photo } };
+    }
+
+    if ('photo' in input) {
+      const date = String(input.date ?? '');
+      if (!DATE_RE.test(date)) return { status: 400, body: { error: 'bad-date' } };
+      if (input.photo === null) {
+        const meta = { table: null, date, at: Date.now() };
+        await redis(config, ['DEL', photoKey], fetchImpl);
+        await redis(config, ['SET', photoMetaKey, JSON.stringify(meta), 'EX', PHOTO_SECONDS], fetchImpl);
+        return { status: 200, body: { photo: meta } };
+      }
+      const data = String(input.photo);
+      const table = String(input.table ?? '');
+      if (data.length > PHOTO_MAX) return { status: 413, body: { error: 'photo-too-big' } };
+      if (!PHOTO_RE.test(data)) return { status: 400, body: { error: 'bad-photo' } };
+      if (!TABLE_RE.test(table)) return { status: 400, body: { error: 'bad-table' } };
+      const meta = { table, date, at: Date.now() };
+      await redis(config, ['SET', photoKey, JSON.stringify({ ...meta, data }), 'EX', PHOTO_SECONDS], fetchImpl);
+      await redis(config, ['SET', photoMetaKey, JSON.stringify(meta), 'EX', PHOTO_SECONDS], fetchImpl);
+      return { status: 200, body: { photo: meta } };
     }
 
     if ('meal' in input) {

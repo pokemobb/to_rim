@@ -90,24 +90,34 @@
 
         <!-- ฝั่งเรา: เลือกโต๊ะแล้วจอง/แชร์ -->
         <div id="sheet" class="pane-stack" hidden>
-          <div class="row">
-            <div>
-              <div class="big">โต๊ะ <span id="sel-id"></span></div>
-              <div class="label" id="sel-sub"></div>
-            </div>
+          <div class="table-head">
+            <div class="table-no">โต๊ะ <span id="sel-id"></span></div>
             <span class="chip-status" id="sel-chip"></span>
           </div>
+          <div class="label one-line" id="sel-sub"></div>
           <div class="actions" id="sheet-confirm" hidden>
             <button id="pick-cancel" class="ghost">ยกเลิก</button>
             <button id="pick-ok" class="primary">✓ จองโต๊ะนี้</button>
           </div>
           <div class="stack" id="sheet-share">
-            <button id="share" class="primary">แชร์ให้เพื่อน</button>
-            <div class="actions">
-              <button id="preview" class="ghost">👀 ที่เพื่อนเห็น</button>
-              <button id="clear" class="ghost danger">ยกเลิกการจอง</button>
+            <!-- รูปโต๊ะ: ถ่ายของบนโต๊ะ/กระเป๋าไว้ให้เพื่อนสังเกตง่าย -->
+            <button id="photo-row" class="photo-row">
+              <span class="photo-thumb" id="photo-thumb">📷</span>
+              <span class="photo-text">
+                <b id="photo-title">ถ่ายรูปโต๊ะ</b>
+                <span id="photo-sub">ให้เพื่อนเห็นว่าโต๊ะเราหน้าตาแบบไหน</span>
+              </span>
+              <span class="photo-go" aria-hidden="true">›</span>
+            </button>
+            <div class="share-bar">
+              <button id="share" class="primary">แชร์ให้เพื่อน</button>
+              <button id="preview" class="ghost square" aria-label="ดูแบบที่เพื่อนเห็น" title="ดูแบบที่เพื่อนเห็น">👀</button>
+              <button id="clear" class="ghost square danger" aria-label="ยกเลิกการจอง" title="ยกเลิกการจอง">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-3 6h12l-1 11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 9Zm4 2v8h1.6v-8H10Zm3.4 0v8H15v-8h-1.6Z" fill="currentColor"/></svg>
+              </button>
             </div>
           </div>
+          <input id="photo-input" type="file" accept="image/*" hidden>
         </div>
 
         <!-- ฝั่งเพื่อน: เปิดจากลิงก์ -->
@@ -203,6 +213,22 @@
         <button id="adm-download" class="ghost">ดาวน์โหลดไฟล์</button>
         <button id="adm-reset" class="ghost">ทิ้งที่แก้</button>
       </div>
+    </div>
+  </section>
+
+  <!-- ดูรูปโต๊ะเต็มจอ -->
+  <section id="photo-view" class="photo-view" hidden role="dialog" aria-label="รูปโต๊ะ">
+    <div class="photo-view-top">
+      <div>
+        <div class="photo-view-title" id="photo-view-title"></div>
+        <div class="photo-view-sub" id="photo-view-sub"></div>
+      </div>
+      <button id="photo-close" class="icon dark" aria-label="ปิด">✕</button>
+    </div>
+    <img id="photo-img" alt="รูปโต๊ะ">
+    <div class="photo-view-actions">
+      <button id="photo-delete" class="ghost dark">ลบรูป</button>
+      <button id="photo-retake" class="primary">📷 ถ่ายใหม่</button>
     </div>
   </section>
 
