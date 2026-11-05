@@ -136,11 +136,24 @@ function overview() {
     if ((mid(m) > 0) === rising) z = m; else a = m;
   }
   target.z += (a + z) / 2;
-  return { pos: viewFrom(target, hi), target };
+  return { pos: viewFrom(target, hi), target, distance: hi };
 }
-const flyHome = (ms) => { const h = overview(); flyTo(h.pos, h.target, ms); };
+// มุมปกติ: ซูมเข้าครึ่งหนึ่งของภาพรวม แล้วเลื่อนซ้าย/ขวาไปหาจุดที่อยากดู
+// spanX = ความกว้างที่ต้องเห็นให้ครบ (เช่น ระยะจากประตูถึงโต๊ะ) ถ้ากว้างกว่าจอจะถอยออกให้พอ แต่ไม่เกินภาพรวม
+function sideView(x, spanX = 0) {
+  const all = overview();
+  const halfFov = Math.tan(THREE.MathUtils.degToRad(fitCam.fov / 2));
+  const perMeter = halfFov * fitCam.aspect; // ครึ่งความกว้างที่เห็นบนพื้น ต่อระยะกล้อง 1 เมตร
+  const d = Math.min(all.distance, Math.max(all.distance * 0.5, (spanX / 2 + 3) / perMeter));
+  const half = d * perMeter;
+  const cx = (room.minX + room.maxX) / 2;
+  const tx = half * 2 >= roomW ? cx : THREE.MathUtils.clamp(x ?? cx, room.minX + half - 1, room.maxX - half + 1);
+  const target = all.target.clone().setX(tx);
+  return { pos: viewFrom(target, d), target };
+}
+const flyHome = (ms) => { const v = sideView(); flyTo(v.pos, v.target, ms); };
 
-const HOME = overview();
+const HOME = sideView();
 camera.position.copy(HOME.pos);
 
 const controls = new OrbitControls(camera, canvas);
@@ -441,9 +454,12 @@ function flyToTable(t) {
   flyTo(viewFrom(target, 20), target);
 }
 
-// ไม่ซูมเข้า: ถอยไปมุมภาพรวม เห็นทั้งห้องและเส้นทางจากประตูถึงโต๊ะในครั้งเดียว
-function flyToRoute() {
-  flyHome(1200);
+// ซูมครึ่งเดียว แล้วเลื่อนซ้าย/ขวาให้เห็นเส้นทางจากประตูถึงโต๊ะ (ถอยออกเฉพาะตอนเส้นทางกว้างกว่าจอ)
+function flyToRoute(t) {
+  if (!t || !entranceDoors.length) return flyHome(1200);
+  const door = guidePoints(t)[0];
+  const v = sideView((door.x + t.x) / 2, Math.abs(t.x - door.x));
+  flyTo(v.pos, v.target, 1200);
 }
 
 controls.addEventListener('start', () => { flight = null; });
@@ -730,6 +746,7 @@ function ownerPick(id) {
   setSelected(id);
   fillSheet(id, id !== confirmedId);
   setPanel(true);
+  flyToRoute(tableById.get(id)); // เลื่อนซ้าย/ขวาให้เห็นเส้นทางจากประตูถึงโต๊ะ
 }
 
 async function confirmPick() {
