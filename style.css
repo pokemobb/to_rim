@@ -977,3 +977,6 @@ body.mascot-on #hint { display: none; }
 .zoom-seg button.on { background: var(--accent); color: #fff; }
 .zoom-seg button:active { transform: scale(0.92); }
 @media (min-width: 600px) { .zoom-seg { right: calc(var(--fl) + 12px); } }
+/* สูงเท่าการ์ดชื่อแอปด้านซ้าย (36px) */
+.zoom-seg { padding: 3px; height: 36px; box-sizing: border-box; align-items: center; }
+.zoom-seg button { width: 32px; height: 30px; min-height: 30px; font-size: 12px; }
