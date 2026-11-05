@@ -437,7 +437,7 @@ function setSelected(id) {
   if (t) {
     paint(id);
     marker.position.set(t.x, 0, t.z);
-    const name = mode === 'friend' ? shared.name : groupId && groupState?.table === id ? groupState.by : '';
+    const name = mode === 'friend' ? shared.name : ''; // ชื่อมีเฉพาะลิงก์แบบเก่า
     const who = name ? `${name} · ` : '';
     calloutEl.querySelector('.callout-text').textContent = `${who}โต๊ะ ${id}`;
   }
@@ -512,11 +512,16 @@ function setPanel(open) {
   $('sheet').hidden = !(mode === 'owner' && active && open);
   $('banner').hidden = !(mode === 'friend' && open);
   $('pill').hidden = !active || open;
-  const by = groupId && groupState?.table === selectedId && groupState.by ? ` · โดย ${groupState.by}` : ' · แตะเพื่อแชร์';
-  $('pill-text').textContent = mode === 'owner' ? `โต๊ะ ${selectedId}${by}` : pillText;
+  $('recenter').hidden = $('pill').hidden || !tableById.get(selectedId);
+  $('pill-text').textContent = mode === 'owner' ? `โต๊ะ ${selectedId} · แตะเพื่อแชร์` : pillText;
 }
 
 $('pill').addEventListener('click', () => setPanel(true));
+// ปุ่มลอย: เลื่อนแผนที่ไปไกลแล้ว กดทีเดียวกลับมาเห็นเส้นทางถึงโต๊ะ
+$('recenter').addEventListener('click', () => {
+  const t = tableById.get(selectedId);
+  if (t) flyToRoute(t);
+});
 $('sheet-close').addEventListener('click', () => (sheetPending ? cancelPick() : setPanel(false)));
 $('banner-close').addEventListener('click', () => setPanel(false));
 
@@ -528,9 +533,6 @@ controls.addEventListener('start', () => {
 });
 
 // ---------- ฝั่งเรา: เลือกแล้วแชร์ ----------
-const nameInput = $('name');
-nameInput.value = store.get('torim:name') ?? '';
-nameInput.addEventListener('input', () => store.set('torim:name', nameInput.value.trim()));
 
 // แตะโต๊ะ = ดูตัวอย่างก่อน (หมุด + เส้นนำทาง) ต้องกด "จองโต๊ะนี้" ถึงจะจำไว้และแชร์ได้
 let confirmedId = null;
@@ -546,7 +548,6 @@ if (groupId) store.set(GROUP_KEY, groupId);
 let groupState = null; // { table, date, by, at }
 let pollTimer;
 
-const myName = () => nameInput.value.trim();
 const newGroupId = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
 
 async function groupApi(method, body) {
@@ -609,8 +610,7 @@ function applyGroup(state, announce) {
   confirmedId = id;
   store.set('torim:pick', id ? { id, date: today() } : null);
   if (announce) {
-    const who = state.by || 'เพื่อน';
-    toast(id ? `${who}เปลี่ยนเป็นโต๊ะ ${id}` : `${who}ยกเลิกโต๊ะแล้ว`);
+    toast(id ? `โต๊ะเปลี่ยนเป็น ${id} แล้ว` : 'โต๊ะของกลุ่มถูกยกเลิกแล้ว');
   }
   if (sheetPending) return; // กำลังเลือกโต๊ะอยู่ ไม่ขัดจังหวะ
   setSelected(id);
@@ -639,7 +639,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) poll
 async function saveGroupTable(table) {
   const creating = !groupId;
   if (creating) groupId = newGroupId();
-  const state = await groupApi('POST', { table, date: today(), by: myName() });
+  const state = await groupApi('POST', { table, date: today() });
   if (state.error !== undefined) {
     if (creating || groupUnavailable(state)) {
       leaveGroup();
@@ -663,7 +663,7 @@ function fillSheet(id, pending) {
   const t = tableById.get(id);
   $('sel-id').textContent = id;
   const byLine = groupId && groupState?.table === id && groupState.at
-    ? ` · เลือกโดย ${groupState.by || 'เพื่อน'} ${agoText(groupState.at)}`
+    ? ` · อัปเดต ${agoText(groupState.at)}`
     : '';
   $('sel-sub').textContent = pending && confirmedId
     ? `เปลี่ยนจากโต๊ะ ${confirmedId} ที่จองไว้${groupId ? ' (ทุกคนในกลุ่มจะเห็น)' : ''}`
@@ -705,7 +705,6 @@ $('pick-cancel').addEventListener('click', cancelPick);
 function enterOwner() {
   mode = 'owner';
   history.replaceState(null, '', groupId ? `${location.pathname}?g=${groupId}` : location.pathname);
-  $('adm-enter').hidden = false; // ปุ่มเข้าแอดมินโชว์เฉพาะหน้าปกติ ไม่โชว์ในลิงก์ที่เพื่อนเปิด
   $('hint').hidden = false;
   updateGroupUi();
   // จำโต๊ะที่จองไว้ของวันนี้ เปิดเว็บใหม่ก็ยังปักหมุดอยู่ (แสดงเป็นป้ายย่อ)
@@ -733,7 +732,6 @@ function toast(text) {
 }
 
 function shareUrl() {
-  const name = nameInput.value.trim();
   const url = new URL(location.pathname, location.origin);
   url.searchParams.set('openExternalBrowser', '1'); // เปิดจาก LINE แล้วให้เด้งไปเบราว์เซอร์จริง (เบราว์เซอร์ใน LINE บางเครื่องเปิด 3D ไม่ได้)
   if (groupId) {
@@ -742,7 +740,6 @@ function shareUrl() {
   }
   url.searchParams.set('t', selectedId);
   url.searchParams.set('d', today());
-  if (name) url.searchParams.set('n', name);
   return url;
 }
 
@@ -754,11 +751,10 @@ $('preview').addEventListener('click', () => {
 });
 
 $('share').addEventListener('click', async () => {
-  const name = nameInput.value.trim();
   const url = shareUrl();
   const text = groupId
     ? `วันนี้นั่งโต๊ะ ${selectedId} ที่โรงอาหาร 📍 ใครได้โต๊ะอื่นก่อน กดเปลี่ยนในลิงก์นี้ได้เลย`
-    : `${name || 'เรา'}นั่งโต๊ะ ${selectedId} ที่โรงอาหาร 📍`;
+    : `วันนี้นั่งโต๊ะ ${selectedId} ที่โรงอาหาร 📍`;
 
   if (navigator.share) {
     try {
@@ -1058,9 +1054,17 @@ $('adm-exit').addEventListener('click', () => {
   if (isPending() && !window.confirm('ยังไม่ได้กด "ตกลง" ออกเลยไหม? (ที่แก้ล่าสุดจะหาย)')) return;
   location.href = location.pathname;
 });
-$('adm-enter').addEventListener('click', () => {
-  location.href = `${location.pathname}?admin`;
+// เข้าโหมดแอดมิน: กดค้างที่ชื่อเว็บ (ไม่มีปุ่มให้คนทั่วไปเห็น) หรือเปิด ?admin ตรงๆ
+let adminPress;
+const titleEl = document.querySelector('.title');
+titleEl.addEventListener('pointerdown', () => {
+  if (mode === 'admin') return;
+  adminPress = setTimeout(() => { location.href = `${location.pathname}?admin`; }, 800);
 });
+for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) {
+  titleEl.addEventListener(ev, () => clearTimeout(adminPress));
+}
+titleEl.addEventListener('contextmenu', (e) => e.preventDefault());
 
 $('adm-reset').addEventListener('click', () => {
   if (!window.confirm('ทิ้งการแก้ไขทั้งหมด แล้วกลับไปใช้ผังที่เผยแพร่อยู่?')) return;

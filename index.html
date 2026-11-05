@@ -6,7 +6,20 @@
   <title>โต๊ะวันนี้</title>
   <meta name="description" content="ดูว่าเพื่อนนั่งโต๊ะไหนในโรงอาหาร">
   <meta property="og:title" content="โต๊ะวันนี้ 📍">
-  <meta property="og:description" content="กดดูว่าเรานั่งโต๊ะไหนในโรงอาหาร">
+  <meta property="og:description" content="ดูว่าเพื่อนนั่งโต๊ะไหนในโรงอาหาร เดินตามลูกศรสีฟ้าไปได้เลย">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://torim-beta.vercel.app/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <!-- เพิ่มไปยังหน้าจอโฮม: เปิดเต็มจอเหมือนแอป (ไม่ใส่ start_url ใน manifest เพื่อให้จำลิงก์กลุ่ม ?g= ไว้ด้วย) -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="โต๊ะวันนี้">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#e8edf2">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📍</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +43,6 @@
     <div class="title-row">
       <div class="title">📍 โต๊ะวันนี้</div>
       <button id="adm-exit" class="ghost small" hidden>ออกจากแอดมิน</button>
-      <button id="adm-enter" class="ghost small" hidden aria-label="แก้ผังโต๊ะ (แอดมิน)">⚙️ แอดมิน</button>
     </div>
     <div class="hint" id="hint"></div>
   </header>
@@ -50,10 +62,7 @@
       <button id="pick-ok" class="primary">✓ จองโต๊ะนี้</button>
     </div>
     <div class="stack" id="sheet-share">
-      <div class="share-row">
-        <input id="name" maxlength="20" placeholder="ชื่อเรา (ไม่ใส่ก็ได้)" autocomplete="nickname" aria-label="ชื่อที่จะให้เพื่อนเห็น">
-        <button id="share" class="primary">แชร์ให้เพื่อน</button>
-      </div>
+      <button id="share" class="primary">แชร์ให้เพื่อน</button>
       <button id="preview" class="ghost">👀 ดูแบบที่เพื่อนเห็น</button>
       <button id="clear" class="link">ยกเลิกการจอง</button>
     </div>
@@ -77,6 +86,10 @@
   </section>
 
   <!-- การ์ดที่ย่อแล้ว เหลือป้ายเล็กๆ แตะเพื่อเปิดอีกครั้ง -->
+  <!-- ปุ่มลอยกลับไปที่โต๊ะ (แบบปุ่มตำแหน่งใน Apple Maps) -->
+  <button id="recenter" class="fab" hidden aria-label="กลับไปที่โต๊ะ">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M20.2 3.8 3.9 10.6c-.8.3-.7 1.5.1 1.7l6.6 1.6 1.6 6.6c.2.8 1.4.9 1.7.1L20.7 4.3c.2-.4-.1-.7-.5-.5Z" fill="currentColor"/></svg>
+  </button>
   <button id="pill" class="pill" hidden><span class="dot"></span><span id="pill-text"></span></button>
 
   <!-- แอดมิน: เปิดด้วย ?admin -->
