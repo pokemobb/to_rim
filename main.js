@@ -446,15 +446,21 @@ const purrPool = Array.from({ length: 2 }, () => {
   return { obj, el, until: 0 };
 });
 const catNdc = new THREE.Vector3();
+const catTop = new THREE.Vector3();
+// แตะโดนแมวต้องแตะใกล้ตัวจริงๆ (รัศมีตามขนาดตัวแมวบนจอ) ไม่แย่งการแตะเลือกโต๊ะ
 function catAt(e) {
   const r = canvas.getBoundingClientRect();
+  const toPx = (v) => [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height];
   let best = null;
-  let bestD = 16 + 8 * zoomLevel; // ซูมใกล้ แมวตัวใหญ่ แตะโดนง่ายขึ้น
+  let bestD = Infinity;
   for (const c of people.cats()) {
     catNdc.copy(c.pos).project(camera);
     if (catNdc.z > 1) continue;
-    const d = Math.hypot(r.left + ((catNdc.x + 1) / 2) * r.width - e.clientX, r.top + ((1 - catNdc.y) / 2) * r.height - e.clientY);
-    if (d < bestD) { bestD = d; best = c; }
+    const [x, y] = toPx(catNdc);
+    const [, yTop] = toPx(catTop.copy(c.pos).setY(c.pos.y + 0.3).project(camera));
+    const reach = Math.max(10, Math.abs(y - yTop) * 1.2);
+    const d = Math.hypot(x - e.clientX, y - e.clientY);
+    if (d < reach && d < bestD) { bestD = d; best = c; }
   }
   return best;
 }
@@ -743,7 +749,9 @@ canvas.addEventListener('pointerup', (e) => {
     renderAdmin();
     return;
   }
-  const cat = catAt(pt);
+  // แตะโดนโต๊ะ = เลือกโต๊ะก่อนเสมอ แมวที่นั่งโต๊ะแตะได้ตอนซูม 2x ขึ้นไป (ตัวใหญ่พอแตะแม่น)
+  const onTable = mode === 'owner' && zoomLevel < 1.8 && !!tableAt(pt);
+  const cat = onTable ? null : catAt(pt);
   const now = performance.now();
   if (lastTap && now - lastTap.at < DOUBLE_MS && Math.hypot(pt.clientX - lastTap.x, pt.clientY - lastTap.y) < 40) {
     clearTimeout(tapTimer);
