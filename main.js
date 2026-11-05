@@ -91,19 +91,56 @@ const roomW = room.maxX - room.minX;
 const roomD = room.maxZ - room.minZ;
 const center = new THREE.Vector3((room.minX + room.maxX) / 2, 0, (room.minZ + room.maxZ) / 2);
 const span = Math.max(roomW, roomD);
-const portrait = window.innerHeight > window.innerWidth;
-// เลื่อนจุดมองเข้าหาฝั่งทางเข้านิดหน่อย ไม่ให้ประตูกับเลขคอลัมน์จมอยู่ใต้แผงด้านล่าง
-const homeTarget = center.clone().add(new THREE.Vector3(0, 0, VIEW * span * 0.07));
 // มุมกล้องตายตัว: มองจากด้านบน เอียงมาทางประตูทางเข้า 40° (ลากได้แค่เลื่อนกับซูม ไม่หมุน)
 const TILT = THREE.MathUtils.degToRad(40);
 const VIEW_DIR = new THREE.Vector3(0, Math.cos(TILT), VIEW * Math.sin(TILT));
 const viewFrom = (target, distance) => target.clone().addScaledVector(VIEW_DIR, distance);
-const HOME = {
-  pos: viewFrom(homeTarget, span * (portrait ? 0.98 : 1.13)),
-  target: homeTarget,
-};
-
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
+
+// มุมภาพรวม: ถอยจนเห็นโรงอาหารทั้งห้อง ในช่องระหว่างการ์ดด้านบนกับแผงด้านล่าง (คำนวณตามขนาดจอทุกครั้ง)
+const fitCam = new THREE.PerspectiveCamera();
+const roomCorners = [[room.minX, room.minZ], [room.maxX, room.minZ], [room.minX, room.maxZ], [room.maxX, room.maxZ]]
+  .map(([x, z]) => new THREE.Vector3(x, 0, z));
+const projected = new THREE.Vector3();
+function screenBounds(target, distance) {
+  fitCam.position.copy(viewFrom(target, distance));
+  fitCam.lookAt(target);
+  fitCam.updateMatrixWorld();
+  const b = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
+  for (const c of roomCorners) {
+    projected.copy(c).project(fitCam);
+    b.x0 = Math.min(b.x0, projected.x); b.x1 = Math.max(b.x1, projected.x);
+    b.y0 = Math.min(b.y0, projected.y); b.y1 = Math.max(b.y1, projected.y);
+  }
+  return b;
+}
+function overview() {
+  const Y0 = -0.5, Y1 = 0.8, X = 0.97; // ขอบจอที่ยอมให้ห้องไปถึง (ด้านล่างเว้นไว้ให้แผงเลือกโต๊ะ)
+  fitCam.copy(camera);
+  fitCam.aspect = (app.clientWidth || innerWidth) / (app.clientHeight || innerHeight);
+  fitCam.updateProjectionMatrix();
+  const target = center.clone();
+  let lo = 5, hi = 500;
+  for (let i = 0; i < 30; i++) {
+    const d = (lo + hi) / 2;
+    const b = screenBounds(target, d);
+    if (b.x1 - b.x0 <= 2 * X && b.y1 - b.y0 <= Y1 - Y0) hi = d; else lo = d;
+  }
+  // เลื่อนจุดมองตามแนวลึก ให้ห้องอยู่กลางช่องที่ว่าง
+  const want = (Y0 + Y1) / 2;
+  const mid = (dz) => { const b = screenBounds(center.clone().setZ(center.z + dz), hi); return (b.y0 + b.y1) / 2 - want; };
+  let a = -span, z = span;
+  const rising = mid(z) > mid(a);
+  for (let i = 0; i < 30; i++) {
+    const m = (a + z) / 2;
+    if ((mid(m) > 0) === rising) z = m; else a = m;
+  }
+  target.z += (a + z) / 2;
+  return { pos: viewFrom(target, hi), target };
+}
+const flyHome = (ms) => { const h = overview(); flyTo(h.pos, h.target, ms); };
+
+const HOME = overview();
 camera.position.copy(HOME.pos);
 
 const controls = new OrbitControls(camera, canvas);
@@ -115,7 +152,7 @@ controls.screenSpacePanning = false; // เลื่อนไปตามพื�
 controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
 controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN };
 controls.minDistance = 6;
-controls.maxDistance = span * 1.6;
+controls.maxDistance = span * 4;
 
 // ไม่ให้เลื่อนหลุดออกนอกโรงอาหาร
 const panShift = new THREE.Vector3();
@@ -404,17 +441,9 @@ function flyToTable(t) {
   flyTo(viewFrom(target, 20), target);
 }
 
-// มุมกว้างพอให้เห็นทั้งเส้นทางจากประตูถึงโต๊ะ
-function flyToRoute(t) {
-  if (!entranceDoors.length) return flyToTable(t);
-  const door = guidePoints(t)[0];
-  // เล็งค่อนไปทางโต๊ะ เผื่อที่ให้ป้ายลอยเหนือโต๊ะไม่ชนหัวจอ
-  const target = new THREE.Vector3((door.x + t.x) / 2, 0.5, door.y + (t.z - door.y) * 0.6);
-  // ถอยให้พอทั้งแนวลึก และแนวกว้าง (จอมือถือแคบ เส้นที่ไปทางซ้าย/ขวาไกลๆ ต้องถอยมากขึ้น)
-  const halfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-  const byWidth = (Math.abs(t.x - door.x) / 2 + 3) / (halfFov * camera.aspect);
-  const d = Math.max(13, Math.abs(t.z - door.y) * 1.3, byWidth);
-  flyTo(viewFrom(target, d * 1.22), target, 1200);
+// ไม่ซูมเข้า: ถอยไปมุมภาพรวม เห็นทั้งห้องและเส้นทางจากประตูถึงโต๊ะในครั้งเดียว
+function flyToRoute() {
+  flyHome(1200);
 }
 
 controls.addEventListener('start', () => { flight = null; });
@@ -735,7 +764,7 @@ function enterOwner() {
   const last = store.get('torim:pick');
   confirmedId = last?.date === today() && tableById.has(last.id) ? last.id : null;
   cancelPick();
-  flyTo(HOME.pos.clone(), HOME.target.clone());
+  flyHome();
   pollGroup(true);
 }
 
