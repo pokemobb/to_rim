@@ -161,7 +161,7 @@ export function createPeople(scene, grid, types) {
       to = new THREE.Vector2(grid.x0 + (grid.cols - 1) * grid.colSpacing + 1, z);
     } else {
       // ทางเดินระหว่างหัวโต๊ะ เดินตามยาว
-      const col = 1 + Math.floor(rand() * (grid.cols - 1));
+      const col = 2 + Math.floor(rand() * (grid.cols - 2)); // ทางเดินแรกชิดกำแพงที่เว้าเข้ามา
       const x = grid.x0 + (col - 0.5) * grid.colSpacing;
       from = new THREE.Vector2(x, front);
       to = new THREE.Vector2(x, back);

@@ -286,6 +286,15 @@ export function buildScenery(scene, layout) {
   floor.receiveShadow = true;
   scene.add(floor);
 
+  // ส่วนที่กำแพงเว้าเข้ามา: ปิดพื้นกระเบื้องด้วยพื้นหญ้าข้างนอก
+  for (const c of room.cutouts ?? []) {
+    const patch = new THREE.Mesh(new THREE.PlaneGeometry(c.maxX - c.minX + 0.4, c.maxZ - c.minZ + 0.4), ground.material);
+    patch.rotation.x = -Math.PI / 2;
+    patch.position.set((c.minX + c.maxX) / 2 - 0.2 * Math.sign(cx - (c.minX + c.maxX) / 2), 0.004, (c.minZ + c.maxZ) / 2 - 0.2 * Math.sign(cz - (c.minZ + c.maxZ) / 2));
+    patch.receiveShadow = true;
+    scene.add(patch);
+  }
+
   // กำแพง เว้นช่องตรงประตูที่อยู่บนแนวกำแพง
   const doors = layout.landmarks.filter((l) => l.kind === 'door');
   for (const wall of layout.walls ?? []) {
