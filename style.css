@@ -406,3 +406,70 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
   font-weight: 500;
 }
 .chip b { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; background: var(--fill-strong); color: var(--muted); font-size: 11px; }
+
+/* ---------- มาสคอต "น้องข้าว" ใต้แผนที่ ---------- */
+.mascot {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  max-width: 420px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  animation: rise 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.mascot > * { pointer-events: auto; }
+.mascot-art {
+  flex: none;
+  width: 84px;
+  height: 84px;
+  min-height: 0;
+  padding: 0;
+  background: none;
+  border-radius: 999px;
+  animation: bob 2.8s ease-in-out infinite;
+}
+.mascot-art svg { width: 100%; height: 100%; overflow: visible; }
+.mascot-art.hop { animation: hop 0.5s ease; }
+@keyframes bob { 50% { transform: translateY(-3px); } }
+@keyframes hop {
+  30% { transform: translateY(-12px) scale(1.04, 0.96); }
+  60% { transform: translateY(0) scale(0.96, 1.04); }
+}
+.mascot .eyes { transform-box: fill-box; transform-origin: center; animation: blink 4.6s infinite; }
+@keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
+.mascot .wave { transform-box: fill-box; transform-origin: 10% 95%; animation: wave 3.2s ease-in-out infinite; }
+@keyframes wave {
+  0%, 55%, 100% { transform: rotate(0); }
+  65% { transform: rotate(-22deg); }
+  75% { transform: rotate(8deg); }
+  85% { transform: rotate(-16deg); }
+}
+.mascot-bubble {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  background: var(--material-solid);
+  color: var(--text);
+  border: 0.5px solid var(--separator);
+  border-radius: 18px;
+  padding: 11px 14px;
+  font-size: 15px;
+  line-height: 1.45;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.mascot-bubble::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  margin-top: -7px;
+  border: 7px solid transparent;
+  border-left: 0;
+  border-right-color: var(--material-solid);
+}
+.mascot-bubble.pop { animation: pop 0.3s cubic-bezier(0.2, 1.6, 0.4, 1); }
+body.mascot-on #hint { display: none; }

@@ -591,6 +591,7 @@ function setPanel(open) {
   if (open && foodOpen) closeFood(false);
   if (foodOpen) $('pill').hidden = $('recenter').hidden = true;
   $('food-btn').hidden = mode === 'admin' || foodOpen || !$('sheet').hidden || !$('banner').hidden;
+  updateMascot();
 }
 
 $('pill').addEventListener('click', () => setPanel(true));
@@ -748,6 +749,7 @@ function fillSheet(id, pending) {
     : `${describe(id)}${byLine}`;
   $('sheet-confirm').hidden = !pending;
   $('sheet-share').hidden = pending;
+  updateMascot();
 }
 
 function ownerPick(id) {
@@ -928,6 +930,84 @@ function addMenu() {
 }
 $('food-add').addEventListener('click', addMenu);
 $('food-new').addEventListener('keydown', (e) => { if (e.key === 'Enter') addMenu(); });
+
+// ---------- มาสคอต "น้องข้าว": คำแนะนำใต้แผนที่ ----------
+const TIPS = [
+  'ลากซ้าย–ขวาเพื่อดูทั้งโรงอาหารได้นะ 👈👉',
+  'ลูกศรสีฟ้าคือทางเดินจากประตูทางเข้าไปถึงโต๊ะ',
+  'หิวแต่คิดไม่ออก? กด 🎲 มุมซ้ายล่าง เดี๋ยวช่วยสุ่มเมนูให้',
+];
+let tipIndex = -1; // -1 = คำแนะนำตามสถานการณ์ตอนนี้
+let lastMascotText = '';
+let lastContext = '';
+
+function mascotLine() {
+  if (mode === 'friend') {
+    if (params.has('preview')) return '👀 นี่คือหน้าที่เพื่อนจะเห็น กด “← กลับ” เพื่อกลับไปหน้าเรา';
+    return selectedId ? `เพื่อนรออยู่ที่โต๊ะ ${selectedId} เดินตามลูกศรสีฟ้าไปได้เลย 🏃` : 'เปิดลิงก์จากเพื่อนแล้ว แต่ไม่เจอโต๊ะนี้ในผัง ลองถามเพื่อนอีกทีนะ';
+  }
+  if (sheetPending && selectedId) return `โต๊ะ ${selectedId} ใช่ไหม? ถ้าใช่ กด “จองโต๊ะนี้” ได้เลย`;
+  if (confirmedId) {
+    return groupId
+      ? `ทุกคนในกลุ่มเห็นโต๊ะ ${confirmedId} แล้ว รอเจอกันนะ 👋`
+      : `จองโต๊ะ ${confirmedId} แล้ว! แตะป้ายด้านล่างเพื่อแชร์ให้เพื่อน`;
+  }
+  return groupId ? 'ใครในกลุ่มก็เลือกโต๊ะได้ แตะโต๊ะที่อยากนั่งเลย' : 'สวัสดี! แตะโต๊ะที่จะนั่ง เดี๋ยวพาเดินจากประตูให้ 🍚';
+}
+
+// วางใต้ขอบหน้าของโรงอาหาร (กล้องล็อกแนวลึกไว้ ขอบนี้จึงอยู่ที่เดิมบนจอเสมอ) ซ่อนเมื่อชนการ์ดด้านล่าง
+const edgePoint = new THREE.Vector3();
+function updateMascot() {
+  const el = $('mascot');
+  if (!el || mode === 'admin') {
+    if (el) el.hidden = true;
+    document.body.classList.remove('mascot-on');
+    return;
+  }
+  const v = sideView();
+  fitCam.position.copy(v.pos);
+  fitCam.lookAt(v.target);
+  fitCam.updateMatrixWorld();
+  edgePoint.set(v.target.x, 0, room.minZ).project(fitCam);
+  const top = ((1 - edgePoint.y) / 2) * app.clientHeight + 14;
+  el.style.top = `${Math.round(top)}px`;
+
+  // สถานการณ์เปลี่ยน (เลือก/จองโต๊ะ) กลับมาพูดเรื่องที่ต้องทำตอนนี้ก่อน
+  const context = mascotLine();
+  if (context !== lastContext) {
+    lastContext = context;
+    tipIndex = -1;
+  }
+  const text = tipIndex < 0 ? context : TIPS[tipIndex];
+  const bubble = $('mascot-text');
+  if (text !== lastMascotText) {
+    bubble.textContent = lastMascotText = text;
+    bubble.classList.remove('pop');
+    void bubble.offsetWidth;
+    bubble.classList.add('pop');
+  }
+
+  // ไม่ให้ทับการ์ด/ปุ่มด้านล่าง
+  el.hidden = false;
+  const bottom = el.getBoundingClientRect().bottom;
+  const blockers = ['sheet', 'banner', 'food', 'pill', 'food-btn', 'recenter']
+    .map((id) => $(id))
+    .filter((b) => b && !b.hidden);
+  const clash = blockers.some((b) => b.getBoundingClientRect().top < bottom + 8);
+  el.hidden = clash;
+  document.body.classList.toggle('mascot-on', !clash && !params.has('preview'));
+}
+
+function nextTip() {
+  tipIndex = tipIndex + 1 >= TIPS.length ? -1 : tipIndex + 1;
+  const art = $('mascot-btn');
+  art.classList.remove('hop');
+  void art.offsetWidth;
+  art.classList.add('hop');
+  updateMascot();
+}
+$('mascot-btn').addEventListener('click', nextTip);
+$('mascot-text').addEventListener('click', nextTip);
 
 function shareUrl() {
   const url = new URL(location.pathname, location.origin);
@@ -1313,6 +1393,7 @@ function resize() {
     keepInRoom();
     camera.position.copy(viewFrom(controls.target, lock.d));
   }
+  updateMascot();
 }
 window.addEventListener('resize', resize);
 resize();
