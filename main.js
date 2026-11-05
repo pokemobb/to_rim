@@ -160,11 +160,12 @@ function updateLock() {
   lock.z = centerTarget(win, lock.d).z;
   const perMeter = Math.tan(THREE.MathUtils.degToRad(fitCam.fov / 2)) * fitCam.aspect; // ครึ่งความกว้างบนพื้น ต่อระยะ 1 เมตร
   lock.half = lock.d * perMeter;
+  lock.perMeter = perMeter;
 }
-// เลื่อนได้ถึงแค่ขอบห้องพอดีจอ
-const clampX = (x) => (lock.half * 2 >= roomW
+// เลื่อนได้ถึงแค่ขอบห้องพอดีจอ (half = ครึ่งความกว้างที่เห็นบนพื้น ตามระยะซูมตอนนั้น)
+const clampX = (x, half = lock.half) => (half * 2 >= roomW
   ? center.x
-  : THREE.MathUtils.clamp(x, room.minX + lock.half - 1, room.maxX - lock.half + 1));
+  : THREE.MathUtils.clamp(x, room.minX + half - 1, room.maxX - half + 1));
 function sideView(x = center.x) {
   const target = new THREE.Vector3(clampX(x), 0, lock.z);
   return { pos: viewFrom(target, lock.d), target };
@@ -181,15 +182,29 @@ controls.enableDamping = true;
 controls.enableRotate = false;
 controls.minPolarAngle = controls.maxPolarAngle = TILT;
 controls.screenSpacePanning = false; // เลื่อนไปตามพื้น ไม่ใช่ตามจอ
-controls.enableZoom = false; // ซูมไม่ได้ ใช้ระยะที่ล็อกไว้
-controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN };
-controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.PAN };
+// ถ่างสองนิ้ว / ลูกกลิ้งเมาส์ ซูมเข้าไปดูแมวใกล้ๆ ได้ราว 3 เท่า ซูมออกได้ไม่เกินมุมปกติ
+const MAX_ZOOM = 3;
+controls.enableZoom = true;
+controls.zoomToCursor = true; // ซูมเข้าหาตรงที่นิ้ว/เมาส์ชี้
+controls.zoomSpeed = 1.2;
+const syncZoomLimits = () => {
+  controls.maxDistance = lock.d;
+  controls.minDistance = lock.d / MAX_ZOOM;
+};
+syncZoomLimits();
+controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN };
+let zoomLevel = 1; // 1 = มุมปกติ, 3 = ใกล้สุด
 
-// เลื่อนได้แค่ซ้าย/ขวา: ตรึงแนวลึกไว้ และไม่ให้เลื่อนหลุดขอบห้อง
+// มุมปกติเลื่อนได้แค่ซ้าย/ขวา ซูมเข้าแล้วเลื่อนขึ้นลงได้ด้วย แต่ไม่หลุดขอบห้อง
 const panShift = new THREE.Vector3();
 function keepInRoom() {
   const t = controls.target;
-  panShift.set(clampX(t.x) - t.x, -t.y, lock.z - t.z);
+  const dist = camera.position.distanceTo(t);
+  zoomLevel = THREE.MathUtils.clamp(lock.d / dist, 1, MAX_ZOOM);
+  const slack = (roomD / 2) * (1 - 1 / zoomLevel);
+  const z = THREE.MathUtils.clamp(t.z, lock.z - slack, lock.z + slack);
+  panShift.set(clampX(t.x, dist * lock.perMeter) - t.x, -t.y, z - t.z);
   if (panShift.lengthSq() === 0) return;
   t.add(panShift);
   camera.position.add(panShift);
@@ -379,7 +394,7 @@ function updateChats(now) {
   const off = mode === 'admin' || document.hidden;
   for (const c of chatPool) if (c.obj.visible && (off || now > c.until)) c.obj.visible = false;
   if (off || now < nextChatAt) return;
-  nextChatAt = now + 900 + Math.random() * 1500;
+  nextChatAt = now + (900 + Math.random() * 1500) / zoomLevel; // ซูมใกล้ คุยกันถี่ขึ้น
   const free = chatPool.find((c) => !c.obj.visible);
   const spots = people.spots();
   if (!free || !spots.length) return;
@@ -423,7 +438,7 @@ const catNdc = new THREE.Vector3();
 function catAt(e) {
   const r = canvas.getBoundingClientRect();
   let best = null;
-  let bestD = 20; // แตะห่างจากหัวแมวไม่เกิน 20px
+  let bestD = 16 + 8 * zoomLevel; // ซูมใกล้ แมวตัวใหญ่ แตะโดนง่ายขึ้น
   for (const c of people.cats()) {
     catNdc.copy(c.pos).project(camera);
     if (catNdc.z > 1) continue;
@@ -431,6 +446,10 @@ function catAt(e) {
     if (d < bestD) { bestD = d; best = c; }
   }
   return best;
+}
+function flyToCat(c) {
+  const target = new THREE.Vector3(c.pos.x, 0, c.pos.z);
+  flyTo(viewFrom(target, lock.d / MAX_ZOOM), target, 800);
 }
 function petCat(c) {
   const { pos, kind } = people.poke(c);
@@ -654,16 +673,41 @@ function cellAt(e) {
 }
 
 // แยก "แตะ" ออกจาก "ลากเลื่อนแผนที่" ด้วยระยะที่นิ้วขยับ
+// ถ่างสองนิ้วซูมอยู่ ไม่นับเป็นการแตะ (จนกว่าจะยกนิ้วออกหมด)
 let downAt = null;
-canvas.addEventListener('pointerdown', (e) => { downAt = { x: e.clientX, y: e.clientY }; });
+const fingers = new Set();
+let pinching = false;
+canvas.addEventListener('pointerdown', (e) => {
+  fingers.add(e.pointerId);
+  if (fingers.size > 1) pinching = true;
+  downAt = { x: e.clientX, y: e.clientY };
+});
+canvas.addEventListener('pointercancel', (e) => {
+  fingers.delete(e.pointerId);
+  if (!fingers.size) pinching = false;
+  downAt = null;
+});
+let lastPet = { cat: null, at: 0 };
 canvas.addEventListener('pointerup', (e) => {
+  fingers.delete(e.pointerId);
+  if (pinching) {
+    if (!fingers.size) pinching = false;
+    downAt = null;
+    return;
+  }
   if (!downAt) return;
   const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
   downAt = null;
   if (moved > 6) return;
   if (mode !== 'admin') {
     const cat = catAt(e);
-    if (cat) return petCat(cat);
+    if (cat) {
+      // แตะแมวตัวเดิมสองทีติดกัน = กล้องบินเข้าไปดูใกล้ๆ
+      const now = performance.now();
+      if (lastPet.cat === cat && now - lastPet.at < 400) flyToCat(cat);
+      lastPet = { cat, at: now };
+      return petCat(cat);
+    }
   }
   if (mode === 'owner') {
     const id = tableAt(e);
@@ -695,7 +739,7 @@ function setPanel() {
   $('sheet').hidden = !(mode === 'owner' && selectedId);
   $('banner').hidden = mode !== 'friend';
   $('table-empty').hidden = !(mode === 'owner' && !selectedId);
-  $('recenter').hidden = mode === 'admin' || !tableById.get(selectedId);
+  updateRecenter();
   updateMascot();
   syncDockHeight();
 }
@@ -725,10 +769,12 @@ function syncDockHeight() {
 }
 
 // ปุ่มลอย: เลื่อนแผนที่ไปไกลแล้ว กดทีเดียวกลับมาเห็นเส้นทางถึงโต๊ะ
-$('recenter').addEventListener('click', () => {
-  const t = tableById.get(selectedId);
-  if (t) flyToRoute(t);
-});
+// แสดงเมื่อมีโต๊ะที่จอง หรือซูมเข้าไปแล้ว: กดทีเดียวกลับมามุมเห็นเส้นทางถึงโต๊ะ (หรือมุมภาพรวม)
+function updateRecenter() {
+  const show = mode !== 'admin' && (!!tableById.get(selectedId) || zoomLevel > 1.15);
+  if ($('recenter').hidden === show) $('recenter').hidden = !show;
+}
+$('recenter').addEventListener('click', () => flyToRoute(tableById.get(selectedId)));
 
 // เริ่มลากแผนที่ = ซ่อนคำแนะนำด้านบน
 controls.addEventListener('start', () => {
@@ -1666,6 +1712,7 @@ function resize() {
   camera.updateProjectionMatrix();
   // จอเปลี่ยนขนาด (หมุนจอ) คำนวณระยะล็อกใหม่ แล้ววางกล้องให้ตรง
   updateLock();
+  syncZoomLimits();
   if (!flight) {
     keepInRoom();
     camera.position.copy(viewFrom(controls.target, lock.d));
@@ -1705,6 +1752,7 @@ renderer.setAnimationLoop(() => {
 
   controls.update();
   keepInRoom();
+  updateRecenter();
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
 });
