@@ -180,6 +180,7 @@ const seatGeo = mergeGeometries([
 const topMat = new THREE.MeshStandardMaterial({ roughness: 0.55 }); // สีแต่ละโต๊ะมาจาก instance color
 const seatMat = new THREE.MeshStandardMaterial({ color: COLOR.seat, roughness: 0.5 });
 const metalMat = new THREE.MeshStandardMaterial({ color: COLOR.metal, metalness: 0.4, roughness: 0.4 });
+const seamMat = new THREE.MeshBasicMaterial({ color: 0x2a1a0e, transparent: true, opacity: 0.55 });
 const hitMat = new THREE.MeshBasicMaterial({ visible: false });
 
 const tablesGroup = new THREE.Group();
@@ -205,6 +206,9 @@ function buildTables() {
   hitMesh = new THREE.InstancedMesh(unitBox, hitMat, tableList.length);
   const frameMesh = new THREE.InstancedMesh(unitBox, metalMat, tableList.length);
   const legsMesh = new THREE.InstancedMesh(unitBox, metalMat, tableList.length * 4);
+  // รอยต่อกลางโต๊ะยาว (โต๊ะจริงเป็นสองแผ่นต่อกัน) โปร่งแสงให้เข้ากับสีโต๊ะทุกสถานะ
+  const seamMesh = new THREE.InstancedMesh(unitBox, seamMat, tableList.length);
+  let seamCount = 0;
   const seatsMesh = new THREE.InstancedMesh(seatGeo, seatMat, seatCount);
 
   const m = new THREE.Matrix4();
@@ -224,6 +228,9 @@ function buildTables() {
     // ท็อปโต๊ะบางๆ + โครงเหล็กใต้ท็อป + ขาเหล็ก 4 ขา
     topsMesh.setMatrixAt(t.index, m.compose(pos.set(t.x, 0.75, t.z), q, scale.set(type.w, 0.04, type.d)));
     frameMesh.setMatrixAt(t.index, m.compose(pos.set(t.x, 0.7, t.z), q, scale.set(type.w - 0.14, 0.06, type.d - 0.14)));
+    if (type.w > type.d * 1.5) {
+      seamMesh.setMatrixAt(seamCount++, m.compose(pos.set(t.x, 0.772, t.z), q, scale.set(0.022, 0.002, type.d)));
+    }
     // กล่องล่องหนที่ใหญ่กว่าโต๊ะ ให้แตะบนมือถือได้ง่าย
     hitMesh.setMatrixAt(t.index, m.compose(pos.set(t.x, 0.6, t.z), q, scale.set(type.w + 0.6, 1.2, type.d + 1.3)));
     [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz], k) => {
@@ -243,8 +250,9 @@ function buildTables() {
     tableById.set(t.id, t);
   }
 
-  for (const mesh of [topsMesh, frameMesh, legsMesh, seatsMesh, hitMesh]) {
-    mesh.castShadow = mesh.receiveShadow = mesh !== hitMesh;
+  seamMesh.count = seamCount;
+  for (const mesh of [topsMesh, frameMesh, legsMesh, seatsMesh, seamMesh, hitMesh]) {
+    mesh.castShadow = mesh.receiveShadow = mesh !== hitMesh && mesh !== seamMesh;
     mesh.frustumCulled = false;
     tablesGroup.add(mesh);
   }
