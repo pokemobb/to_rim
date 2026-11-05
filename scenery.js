@@ -252,10 +252,10 @@ function tileTexture() {
   const c = document.createElement('canvas');
   c.width = c.height = 128;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#f1ece3';
+  ctx.fillStyle = '#f6f1ea';
   ctx.fillRect(0, 0, 128, 128);
-  ctx.strokeStyle = '#dcd4c6';
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#ebe4da';
+  ctx.lineWidth = 2;
   ctx.strokeRect(0, 0, 128, 128);
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
@@ -270,7 +270,7 @@ export function buildScenery(scene, layout) {
   const cx = (room.minX + room.maxX) / 2;
   const cz = (room.minZ + room.maxZ) / 2;
 
-  // พื้นรอบอาคารโปร่งใส ให้เห็นลายซูชิของหน้าเว็บด้านหลัง เหลือแค่เงาจางๆ ของอาคาร
+  // พื้นรอบอาคารโปร่งใส ให้เห็นพื้นหลังสีพาสเทลของหน้าเว็บ เหลือแค่เงาจางๆ ของอาคาร
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({ opacity: 0.1 }));
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.02;

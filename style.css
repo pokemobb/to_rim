@@ -1,38 +1,40 @@
-/* หน้าตาแบบ iOS: การ์ดกระจกฝ้า ปุ่มทรงแคปซูล สีระบบของ Apple */
+/* หน้าตาแบบแอปน่ารักสบายตา: พื้นครีมพาสเทล การ์ดขาวมนๆ สีหลักส้มพีช ตัวหนังสือหัวข้อแบบกลมมน */
 :root {
-  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans Thai', system-ui, sans-serif;
-  --bg: #e8edf2;
-  --material: rgba(255, 255, 255, 0.78);
+  --font: 'Noto Sans Thai', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-fun: 'Mali', 'Noto Sans Thai', system-ui, sans-serif;
+  --bg: #fbf5ee;
+  --material: rgba(255, 255, 255, 0.92);
   --material-solid: #ffffff;
-  --text: #1c1c1e;
-  --muted: rgba(60, 60, 67, 0.62);
-  --separator: rgba(60, 60, 67, 0.16);
-  --fill: rgba(118, 118, 128, 0.12);
-  --fill-strong: rgba(118, 118, 128, 0.2);
-  --blue: #007aff;
-  --blue-tint: rgba(0, 122, 255, 0.12);
-  --red: #ff3b30;
-  --orange-tint: rgba(255, 149, 0, 0.14);
-  --orange-text: #b25e00;
-  --shadow: 0 10px 40px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.06);
-  --radius: 22px;
+  --text: #4a3a33;
+  --muted: rgba(74, 58, 51, 0.6);
+  --separator: rgba(74, 58, 51, 0.1);
+  --fill: #f6efe8;
+  --fill-strong: #ece2d8;
+  --accent: #e8654d;
+  --accent-tint: #ffe9e2;
+  --red: #e0574a;
+  --orange-tint: #fff1d9;
+  --orange-text: #9a6212;
+  --shadow: 0 8px 28px rgba(120, 86, 62, 0.1), 0 1px 3px rgba(120, 86, 62, 0.06);
+  --radius: 26px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --material: rgba(30, 30, 32, 0.78);
-    --material-solid: #2c2c2e;
-    --text: #f2f2f7;
-    --muted: rgba(235, 235, 245, 0.6);
-    --separator: rgba(84, 84, 88, 0.6);
-    --fill: rgba(118, 118, 128, 0.24);
-    --fill-strong: rgba(118, 118, 128, 0.36);
-    --blue: #0a84ff;
-    --blue-tint: rgba(10, 132, 255, 0.2);
-    --red: #ff453a;
-    --orange-tint: rgba(255, 159, 10, 0.18);
-    --orange-text: #ffb340;
-    --shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+    --bg: #231d1a;
+    --material: rgba(46, 38, 34, 0.94);
+    --material-solid: #2e2622;
+    --text: #f6ece6;
+    --muted: rgba(246, 236, 230, 0.6);
+    --separator: rgba(246, 236, 230, 0.1);
+    --fill: rgba(246, 236, 230, 0.08);
+    --fill-strong: rgba(246, 236, 230, 0.14);
+    --accent: #f27a62;
+    --accent-tint: rgba(242, 122, 98, 0.18);
+    --red: #ff7468;
+    --orange-tint: rgba(255, 180, 80, 0.16);
+    --orange-text: #ffc46b;
+    --shadow: 0 10px 34px rgba(0, 0, 0, 0.4);
   }
 }
 
@@ -42,8 +44,11 @@ html, body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  /* ลายซูชิน่ารักด้านหลังแผนที่ (แผนที่ 3D โปร่งใสรอบอาคาร) */
-  background: #ffefe6 url(bg-sushi.svg) 0 0 / 200px 200px repeat;
+  /* พื้นเรียบสีครีม มีแสงพาสเทลจางๆ สองมุม ไม่มีลาย จะได้ไม่ลายตา */
+  background:
+    radial-gradient(120% 60% at 0% 0%, rgba(255, 214, 196, 0.45), transparent 60%),
+    radial-gradient(100% 50% at 100% 30%, rgba(205, 236, 220, 0.5), transparent 60%),
+    var(--bg);
   color: var(--text);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
@@ -64,9 +69,6 @@ html, body {
   right: 12px;
   max-width: 420px;
   background: var(--material);
-  backdrop-filter: saturate(180%) blur(24px);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-  border: 0.5px solid var(--separator);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 18px;
@@ -76,8 +78,8 @@ html, body {
   top: calc(10px + env(safe-area-inset-top));
   right: auto;
   max-width: calc(100% - 24px);
-  padding: 10px 10px 10px 16px;
-  border-radius: 18px;
+  padding: 8px 16px 8px 10px;
+  border-radius: 22px;
 }
 .bottom {
   bottom: calc(12px + env(safe-area-inset-bottom));
@@ -91,11 +93,11 @@ html, body {
 }
 
 /* ---------- ตัวอักษร ---------- */
-.title { font-weight: 600; font-size: 17px; white-space: nowrap; }
+.title { display: flex; align-items: center; gap: 6px; font-family: var(--font-fun); font-weight: 700; font-size: 18px; white-space: nowrap; }
 .hint { color: var(--muted); font-size: 13px; margin-top: 2px; }
 .label { color: var(--muted); font-size: 14px; line-height: 1.4; }
-.big { font-weight: 700; font-size: 28px; line-height: 1.2; }
-.big span { color: var(--red); font-variant-numeric: tabular-nums; }
+.big { font-family: var(--font-fun); font-weight: 700; font-size: 28px; line-height: 1.2; }
+.big span { color: var(--accent); font-variant-numeric: tabular-nums; }
 
 .row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .title-row { display: flex; align-items: center; gap: 10px; }
@@ -108,18 +110,18 @@ button {
   font-weight: 600;
   font-size: 17px;
   min-height: 50px;
-  border-radius: 14px;
-  padding: 0 16px;
+  border-radius: 999px;
+  padding: 0 18px;
   border: 0;
   cursor: pointer;
   transition: transform 0.12s ease, filter 0.12s ease, background-color 0.2s ease;
 }
 button:active:not(:disabled) { transform: scale(0.97); filter: brightness(0.94); }
 button:disabled { opacity: 0.4; cursor: default; }
-button:focus-visible { outline: 3px solid var(--blue-tint); outline-offset: 2px; }
+button:focus-visible { outline: 3px solid var(--accent-tint); outline-offset: 2px; }
 
-.primary { background: var(--blue); color: #fff; }
-.ghost { background: var(--fill); color: var(--blue); }
+.primary { background: var(--accent); color: #fff; box-shadow: 0 4px 12px rgba(232, 101, 77, 0.28); }
+.ghost { background: var(--fill); color: var(--text); }
 .danger { color: var(--red); }
 
 button.small {
@@ -167,7 +169,7 @@ button.small {
   min-width: 0;
 }
 .share-row input::placeholder { color: var(--muted); }
-.share-row input:focus { outline: 2px solid var(--blue); outline-offset: -2px; }
+.share-row input:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* ---------- Segmented control ---------- */
 .seg3 {
@@ -202,7 +204,7 @@ button.small {
   color: var(--text);
   box-shadow: inset 0 0 0 2px transparent;
 }
-.seg button.on { background: var(--blue-tint); color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue); }
+.seg button.on { background: var(--accent-tint); color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
 
 hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%; }
 
@@ -253,9 +255,7 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
   top: calc(84px + env(safe-area-inset-top));
   transform: translateX(-50%);
   max-width: calc(100% - 24px);
-  background: rgba(28, 28, 30, 0.86);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(74, 58, 51, 0.92);
   color: #fff;
   font-size: 15px;
   font-weight: 500;
@@ -272,9 +272,9 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
   font: 600 13px/1 var(--font);
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  color: #1c1c1e;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.95);
+  color: #4a3a33;
+  box-shadow: 0 2px 6px rgba(120, 86, 62, 0.14);
   white-space: nowrap;
 }
 /* ป้ายลอยเหนือโต๊ะที่เลือก: ฟองคำพูดเล็กๆ มีหางชี้ลงไปที่ก้าน
@@ -289,7 +289,7 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
   padding: 6px 11px 6px 8px;
   border-radius: 999px;
   background: #fff;
-  color: #1c1c1e;
+  color: #4a3a33;
   font: 700 13px/1 var(--font);
   white-space: nowrap;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
@@ -308,21 +308,22 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
   width: 10px;
   height: 10px;
   border-radius: 999px;
-  background: var(--red);
-  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.2);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(232, 101, 77, 0.2);
 }
 .tag.landmark {
   font-size: 12px;
   padding: 5px 9px;
-  background: rgba(255, 255, 255, 0.86);
-  color: #3a3a3c;
+  background: rgba(255, 255, 255, 0.8);
+  color: #7a6a62;
+  box-shadow: none;
 }
 /* เลขหัวแถวแบบตัวหนังสือบนแผนที่ มีขอบขาวให้อ่านออกบนพื้น */
 .tag.colnum {
   background: none;
   box-shadow: none;
   padding: 0;
-  color: #3a3a3c;
+  color: #8a7a72;
   font-size: 15px;
   font-weight: 700;
   text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 6px #fff;
@@ -363,11 +364,8 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: var(--material);
-  backdrop-filter: saturate(180%) blur(24px);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-  border: 0.5px solid var(--separator);
-  color: var(--blue);
+  background: var(--material-solid);
+  color: var(--accent);
   box-shadow: var(--shadow);
 }
 .title { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
@@ -375,7 +373,7 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
 /* ---------- 🎲 วันนี้กินอะไรดี ---------- */
 .fab-left { right: auto; left: 12px; font-size: 24px; }
 .food-title { font-size: 22px; }
-.link.plain { color: var(--blue); }
+.link.plain { color: var(--accent); }
 .slot {
   min-height: 84px;
   display: grid;
@@ -391,7 +389,7 @@ hr { border: 0; border-top: 0.5px solid var(--separator); margin: 0; width: 100%
 }
 .slot.tick { animation: tick 0.09s ease-out; }
 @keyframes tick { from { transform: translateY(-35%); opacity: 0.3; } }
-.slot.done { background: var(--blue-tint); color: var(--blue); animation: pop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1); }
+.slot.done { background: var(--accent-tint); color: var(--accent); animation: pop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1); }
 @keyframes pop { from { transform: scale(0.9); } }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; max-height: 28vh; overflow-y: auto; }
 .chip {
@@ -474,12 +472,9 @@ body.mascot-on #hint { display: none; }
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--material);
-  backdrop-filter: saturate(180%) blur(24px);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-  border-top: 0.5px solid var(--separator);
-  border-radius: 24px 24px 0 0;
-  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.08);
+  background: var(--material-solid);
+  border-radius: 30px 30px 0 0;
+  box-shadow: 0 -6px 28px rgba(120, 86, 62, 0.1);
 }
 .dock-body {
   max-width: 520px;
@@ -493,18 +488,6 @@ body.mascot-on #hint { display: none; }
 .pane-stack { display: grid; gap: 12px; animation: rise 0.28s cubic-bezier(0.2, 0.9, 0.3, 1); }
 .dock .big { font-size: 26px; }
 .food-title { font-size: 20px !important; }
-.chip-status {
-  flex: none;
-  align-self: center;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: var(--fill);
-  color: var(--muted);
-}
-.chip-status.ok { background: rgba(52, 199, 89, 0.16); color: #1f8a3c; }
-.chip-status.wait { background: var(--orange-tint); color: var(--orange-text); }
 .slot { min-height: 72px; }
 #food-edit .chips { max-height: 74px; }
 .food-actions button { font-size: 16px; }
@@ -514,8 +497,8 @@ body.mascot-on #hint { display: none; }
   grid-template-columns: 1fr 1fr;
   max-width: 520px;
   margin: 0 auto;
-  padding: 2px 12px calc(4px + env(safe-area-inset-bottom));
-  border-top: 0.5px solid var(--separator);
+  gap: 10px;
+  padding: 2px 16px calc(8px + env(safe-area-inset-bottom));
 }
 .tab {
   position: relative;
@@ -530,8 +513,9 @@ body.mascot-on #hint { display: none; }
   font-weight: 600;
   border-radius: 12px;
 }
-.tab svg { width: 24px; height: 24px; }
-.tab.on { color: var(--blue); }
+.tab { display: flex; justify-content: center; align-items: center; gap: 6px; min-height: 46px; border-radius: 999px; font-size: 14px; }
+.tab svg { width: 20px; height: 20px; }
+.tab.on { color: var(--accent); background: var(--accent-tint); }
 .tab:active:not(:disabled) { transform: scale(0.94); filter: none; }
 .badge {
   position: absolute;
@@ -548,8 +532,8 @@ body.mascot-on #hint { display: none; }
 
 /* ---------- การ์ดโต๊ะที่จองแล้ว (กะทัดรัด) ---------- */
 .table-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.table-no { font-weight: 700; font-size: 24px; line-height: 1.15; }
-.table-no span { color: var(--red); font-variant-numeric: tabular-nums; }
+.table-no { font-family: var(--font-fun); font-weight: 700; font-size: 26px; line-height: 1.15; }
+.table-no span { color: var(--accent); font-variant-numeric: tabular-nums; }
 .one-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: -6px; font-size: 13px; }
 #sheet { gap: 10px; }
 
@@ -607,3 +591,17 @@ body.mascot-on #hint { display: none; }
 .photo-view img { width: 100%; height: 100%; min-height: 0; object-fit: contain; border-radius: 14px; }
 .photo-view-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 520px; width: 100%; margin: 0 auto; }
 .icon.dark, .ghost.dark { background: rgba(255, 255, 255, 0.14); color: #fff; }
+
+/* ---------- ตัวละคร ---------- */
+.avatar { flex: none; display: block; width: 52px; height: 52px; }
+.avatar svg { width: 100%; height: 100%; overflow: visible; display: block; }
+.avatar.mini { width: 30px; height: 30px; margin: -4px 0; }
+.with-avatar { display: flex; align-items: center; gap: 12px; }
+.mascot-art { width: 92px; height: 92px; }
+.mascot-name { display: block; font-family: var(--font-fun); font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 1px; }
+.mascot-bubble { border: 0; background: var(--fill); box-shadow: none; }
+.mascot-bubble::before { border-right-color: var(--fill); }
+.slot { font-family: var(--font-fun); border-radius: 20px; }
+.slot.done { background: var(--accent-tint); color: var(--accent); }
+.photo-row { border-radius: 20px; }
+.photo-thumb { border-radius: 14px; }

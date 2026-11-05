@@ -5,6 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { buildScenery, LABEL_HEIGHT } from './scenery.js';
 import { toJson } from './layout-format.js';
 import { createPeople } from './people.js';
+import { CHARACTERS, paintCharacters } from './characters.js';
 
 // แบบโต๊ะที่แอดมินเลือกได้ (หน่วยเมตร) — seats คือตำแหน่งเก้าอี้เทียบกับกลางโต๊ะ
 const TYPES = {
@@ -24,13 +25,13 @@ const TYPES = {
 };
 
 const COLOR = {
-  table: 0x8a5a36, // โต๊ะไม้สีน้ำตาลแบบของจริง
-  tableHover: 0xae7a4f,
-  tableSelected: 0xff4d55,
-  tableFaded: 0xd2bea9, // โต๊ะอื่นตอนโฟกัสโต๊ะที่จอง
-  seat: 0xb9c3cf,
-  metal: 0x6b7280,
-  pin: 0xff3b45,
+  table: 0xa77a55, // โต๊ะไม้สีน้ำตาลนุ่มๆ ไม่ตัดกับพื้นแรงจนลายตา
+  tableHover: 0xbf9268,
+  tableSelected: 0xf26a55, // สีส้มพีชเดียวกับปุ่มหลัก
+  tableFaded: 0xe3d5c6, // โต๊ะอื่นตอนโฟกัสโต๊ะที่จอง
+  seat: 0xdcd6ce,
+  metal: 0x9ca0a6,
+  pin: 0xf26a55,
 };
 
 const VIEW = -1; // มองจากฝั่ง z ติดลบ = ฝั่งประตูคู่ด้านบนที่เดินเข้ามา (เปลี่ยนเป็น 1 ถ้าจะมองจากฝั่งตรงข้าม)
@@ -241,7 +242,7 @@ const seatGeo = mergeGeometries([
 const topMat = new THREE.MeshStandardMaterial({ roughness: 0.55 }); // สีแต่ละโต๊ะมาจาก instance color
 const seatMat = new THREE.MeshStandardMaterial({ color: COLOR.seat, roughness: 0.5 });
 const metalMat = new THREE.MeshStandardMaterial({ color: COLOR.metal, metalness: 0.4, roughness: 0.4 });
-const seamMat = new THREE.MeshBasicMaterial({ color: 0x2a1a0e, transparent: true, opacity: 0.55 });
+const seamMat = new THREE.MeshBasicMaterial({ color: 0x5a3b24, transparent: true, opacity: 0.35 });
 const hitMat = new THREE.MeshBasicMaterial({ visible: false });
 
 const tablesGroup = new THREE.Group();
@@ -360,7 +361,7 @@ const entranceDoors = mainDoor
   ? doors.filter((d) => Math.abs(d.z - mainDoor.z) < 0.5 && Math.abs(d.x - mainDoor.x) < 6)
   : [];
 
-const GUIDE_BLUE = 0x007aff;
+const GUIDE_BLUE = 0x3d9bff;
 const GUIDE_WIDTH = 0.5;
 const GUIDE_Y = 0.04;
 
@@ -513,7 +514,7 @@ function setSelected(id) {
   if (focus !== focusOn) {
     focusOn = focus;
     people.setFocus(focus);
-    seatMat.color.set(focus ? 0xd3dae2 : COLOR.seat);
+    seatMat.color.set(focus ? 0xebe6df : COLOR.seat);
     for (const t of tableList) paint(t.id);
   }
   const t = tableById.get(id);
@@ -1079,7 +1080,7 @@ function addMenu() {
 $('food-add').addEventListener('click', addMenu);
 $('food-new').addEventListener('keydown', (e) => { if (e.key === 'Enter') addMenu(); });
 
-// ---------- มาสคอต "น้องข้าว": คำแนะนำในแท็บโต๊ะ ----------
+// ---------- ผองเพื่อนตัวละคร (แมว หมา หมี กระต่าย): ผลัดกันให้คำแนะนำในแท็บโต๊ะ ----------
 const TIPS = [
   'ลากซ้าย–ขวาเพื่อดูทั้งโรงอาหารได้นะ 👈👉',
   'ลูกศรสีฟ้าคือทางเดินจากประตูทางเข้าไปถึงโต๊ะ',
@@ -1089,6 +1090,8 @@ const TIPS = [
 let tipIndex = -1; // -1 = คำแนะนำตามสถานการณ์ตอนนี้
 let lastMascotText = '';
 let lastContext = '';
+let charIndex = 0;
+paintCharacters();
 
 function mascotLine() {
   if (mode === 'friend') {
@@ -1101,7 +1104,7 @@ function mascotLine() {
       ? `ทุกคนในกลุ่มเห็นโต๊ะ ${confirmedId} แล้ว รอเจอกันนะ 👋`
       : `จองโต๊ะ ${confirmedId} แล้ว! แตะป้ายด้านล่างเพื่อแชร์ให้เพื่อน`;
   }
-  return groupId ? 'ใครในกลุ่มก็เลือกโต๊ะได้ แตะโต๊ะที่อยากนั่งเลย' : 'สวัสดี! แตะโต๊ะที่จะนั่ง เดี๋ยวพาเดินจากประตูให้ 🍚';
+  return groupId ? 'ใครในกลุ่มก็เลือกโต๊ะได้ แตะโต๊ะที่อยากนั่งเลย' : 'สวัสดี! แตะโต๊ะที่จะนั่ง เดี๋ยวพาเดินจากประตูให้ 🐾';
 }
 
 // อยู่ในแท็บโต๊ะตอนยังไม่ได้เลือกโต๊ะ
@@ -1114,9 +1117,13 @@ function updateMascot() {
     tipIndex = -1;
   }
   const text = tipIndex < 0 ? context : TIPS[tipIndex];
-  const bubble = $('mascot-text');
+  const bubble = $('mascot-bubble');
   if (text !== lastMascotText) {
-    bubble.textContent = lastMascotText = text;
+    const who = CHARACTERS[charIndex];
+    $('mascot-btn').dataset.char = who.id;
+    paintCharacters($('table-empty'));
+    $('mascot-name').textContent = who.name;
+    $('mascot-text').textContent = lastMascotText = text;
     bubble.classList.remove('pop');
     void bubble.offsetWidth;
     bubble.classList.add('pop');
@@ -1125,6 +1132,7 @@ function updateMascot() {
 
 function nextTip() {
   tipIndex = tipIndex + 1 >= TIPS.length ? -1 : tipIndex + 1;
+  charIndex = (charIndex + 1) % CHARACTERS.length; // แตะแล้วเพื่อนตัวถัดไปมาพูดแทน
   const art = $('mascot-btn');
   art.classList.remove('hop');
   void art.offsetWidth;
@@ -1132,7 +1140,7 @@ function nextTip() {
   updateMascot();
 }
 $('mascot-btn').addEventListener('click', nextTip);
-$('mascot-text').addEventListener('click', nextTip);
+$('mascot-bubble').addEventListener('click', nextTip);
 
 function shareUrl() {
   const url = new URL(location.pathname, location.origin);

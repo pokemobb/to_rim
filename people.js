@@ -7,10 +7,10 @@ const palette = (list) => list.map((c) => new THREE.Color(c));
 // สีเสื้อที่คนที่นี่ใส่กันส่วนใหญ่: ขาว, บานเย็น, กากี (สุ่มตามสัดส่วนนี้)
 const SHIRTS = palette([
   '#f7f7f2', '#f7f7f2', '#f2f2ec', '#f7f7f2',
-  '#c2185b', '#d0306f', '#b8155a',
+  '#e08aa6', '#e897b0', '#d77c9b', // บานเย็นแบบอ่อนลง ไม่ให้แผนที่ลายตา
   '#bfa77a', '#c8b48a', '#b39c6c',
 ]);
-const PANTS = palette(['#1f2a44', '#2b2b2b', '#3a4a5c', '#1f2a44']);
+const PANTS = palette(['#5a6378', '#555b66', '#66718a', '#5a6378']);
 const SKIN = palette(['#f1c27d', '#e0ac69', '#c68642', '#ffdbac', '#d9a066']);
 const HAIR = palette(['#1b1b1b', '#2a1d16', '#3b2a20', '#111111']);
 const FOOD = palette(['#f4a259', '#e9c46a', '#bc4b51', '#8cb369', '#f6e7cb']);

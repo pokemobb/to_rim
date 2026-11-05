@@ -12,11 +12,11 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="theme-color" content="#ffefe6">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📍</text></svg>">
+  <meta name="theme-color" content="#fbf5ee">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Mali:wght@500;600;700&family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <!-- ให้ iPhone/Android รุ่นเก่าที่ยังไม่รู้จัก importmap เปิดได้ -->
   <script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
@@ -34,7 +34,7 @@
 
   <header class="card top">
     <div class="title-row">
-      <div class="title">📍 โต๊ะวันนี้</div>
+      <div class="title"><span class="avatar mini" data-char="cat"></span>โต๊ะวันนี้</div>
       <button id="adm-exit" class="ghost small" hidden>ออกจากแอดมิน</button>
     </div>
     <div class="hint" id="hint"></div>
@@ -52,40 +52,8 @@
       <section id="tab-table" class="pane" role="tabpanel" aria-labelledby="tabbtn-table">
         <!-- ยังไม่ได้เลือกโต๊ะ: น้องข้าวช่วยแนะนำ (แตะเพื่อดูคำแนะนำถัดไป) -->
         <div id="table-empty" class="mascot">
-          <button id="mascot-btn" class="mascot-art" aria-label="น้องข้าว แตะเพื่อดูคำแนะนำถัดไป">
-      <svg viewBox="0 0 120 120" aria-hidden="true">
-        <ellipse cx="60" cy="113" rx="30" ry="4.5" fill="rgba(0,0,0,.13)"/>
-        <g class="wave">
-          <path d="M101 72 q9 -9 7 -21" stroke="#ff7a59" stroke-width="7" stroke-linecap="round" fill="none"/>
-          <circle cx="108" cy="49" r="6.5" fill="#ff9677"/>
-        </g>
-        <path d="M24 62 C24 36 40 22 60 22 C80 22 96 36 96 62 Z" fill="#fffdf8" stroke="#ebe4d6" stroke-width="2"/>
-        <g fill="#efe7d7">
-          <ellipse cx="40" cy="48" rx="3.2" ry="1.6" transform="rotate(-30 40 48)"/>
-          <ellipse cx="52" cy="40" rx="3.2" ry="1.6" transform="rotate(20 52 40)"/>
-          <ellipse cx="80" cy="47" rx="3.2" ry="1.6" transform="rotate(35 80 47)"/>
-          <ellipse cx="62" cy="52" rx="3.2" ry="1.6" transform="rotate(-10 62 52)"/>
-          <ellipse cx="46" cy="56" rx="3.2" ry="1.6" transform="rotate(15 46 56)"/>
-        </g>
-        <path d="M50 31 C50 22 58 20 66 21 C76 21 84 25 82 32 C80 38 70 37 64 38 C56 39 50 37 50 31 Z" fill="#fff" stroke="#efe6d4" stroke-width="1.5"/>
-        <circle cx="66" cy="29.5" r="6" fill="#ffc531"/>
-        <circle cx="64" cy="27.5" r="1.8" fill="#ffe27a"/>
-        <path d="M14 60 H106 C106 90 86 108 60 108 C34 108 14 90 14 60 Z" fill="#ff7a59"/>
-        <path d="M14 60 H106 C106 63.5 105.7 66.5 105.2 69.5 H14.8 C14.3 66.5 14 63.5 14 60 Z" fill="#ff9b7f"/>
-        <path d="M27 99 H93" stroke="#ffc9b8" stroke-width="3" stroke-dasharray="5 7" stroke-linecap="round"/>
-        <g class="eyes">
-          <ellipse cx="47" cy="80" rx="4.6" ry="5.6" fill="#2b2320"/>
-          <ellipse cx="73" cy="80" rx="4.6" ry="5.6" fill="#2b2320"/>
-          <circle cx="48.7" cy="78" r="1.7" fill="#fff"/>
-          <circle cx="74.7" cy="78" r="1.7" fill="#fff"/>
-        </g>
-        <ellipse cx="37" cy="89" rx="6" ry="3.4" fill="#ff3d63" opacity=".4"/>
-        <ellipse cx="83" cy="89" rx="6" ry="3.4" fill="#ff3d63" opacity=".4"/>
-        <path d="M55 87 Q60 93 65 87" stroke="#2b2320" stroke-width="2.6" fill="none" stroke-linecap="round"/>
-        <circle cx="15" cy="76" r="6.5" fill="#ff9677"/>
-      </svg>
-          </button>
-          <div class="mascot-bubble" id="mascot-text" aria-live="polite"></div>
+          <button id="mascot-btn" class="mascot-art" data-char="cat" aria-label="แตะเพื่อดูคำแนะนำถัดไป"></button>
+          <div class="mascot-bubble" id="mascot-bubble" aria-live="polite"><b class="mascot-name" id="mascot-name"></b><span id="mascot-text"></span></div>
         </div>
 
         <!-- ฝั่งเรา: เลือกโต๊ะแล้วจอง/แชร์ -->
@@ -121,10 +89,13 @@
 
         <!-- ฝั่งเพื่อน: เปิดจากลิงก์ -->
         <div id="banner" class="pane-stack" hidden>
-          <div>
+          <div class="with-avatar">
+            <span class="avatar" data-char="dog"></span>
+            <div>
             <div class="label" id="ban-who"></div>
             <div class="big">โต๊ะ <span id="ban-id"></span></div>
             <div class="label" id="ban-sub"></div>
+            </div>
           </div>
           <div class="warn" id="ban-warn" hidden></div>
           <div class="actions">
@@ -137,9 +108,12 @@
       <!-- แท็บ 2: วันนี้กินอะไรดี -->
       <section id="tab-food" class="pane" role="tabpanel" aria-labelledby="tabbtn-food" hidden>
         <div class="pane-stack">
-          <div id="food-head">
-            <div class="big food-title">วันนี้กินอะไรดี</div>
-            <div class="label" id="food-sub"></div>
+          <div id="food-head" class="with-avatar">
+            <span class="avatar" data-char="bear"></span>
+            <div>
+              <div class="big food-title">วันนี้กินอะไรดี</div>
+              <div class="label" id="food-sub"></div>
+            </div>
           </div>
           <div id="food-main" class="stack">
             <div class="slot" id="food-slot" aria-live="polite">🍛</div>
