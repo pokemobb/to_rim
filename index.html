@@ -12,6 +12,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <!-- ให้ iPhone/Android รุ่นเก่าที่ยังไม่รู้จัก importmap เปิดได้ -->
+  <script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
   <script type="importmap">
     {
       "imports": {
@@ -121,6 +123,31 @@
   </section>
 
   <div id="toast" class="toast" hidden></div>
+
+  <!-- ถ้าเปิดแผนที่ไม่สำเร็จ ขึ้นคำแนะนำแทนหน้าขาวๆ -->
+  <section id="boot-error" class="boot-error" hidden>
+    <div class="big">เปิดแผนที่ไม่ได้ 😢</div>
+    <div class="label">เบราว์เซอร์นี้อาจเปิดแผนที่ 3D ไม่ได้ ลองวิธีนี้:</div>
+    <ol class="label">
+      <li>ถ้าเปิดจาก LINE ให้กด <b>⋯</b> มุมขวาบน แล้วเลือก <b>เปิดในเบราว์เซอร์</b> (Safari / Chrome)</li>
+      <li>อัปเดต iOS หรือแอป Chrome ให้เป็นรุ่นล่าสุด</li>
+    </ol>
+    <button id="boot-retry" class="primary">ลองใหม่</button>
+    <div class="label boot-why" id="boot-why"></div>
+  </section>
+  <script>
+    (function () {
+      function show(why) {
+        if (window.torimReady) return;
+        document.getElementById('boot-error').hidden = false;
+        if (why) document.getElementById('boot-why').textContent = 'รายละเอียด: ' + why;
+      }
+      document.getElementById('boot-retry').onclick = function () { location.reload(); };
+      window.addEventListener('error', function (e) { show(e.message); });
+      window.addEventListener('unhandledrejection', function (e) { show(String((e.reason && e.reason.message) || e.reason)); });
+      setTimeout(function () { show('โหลดนานเกินไป เน็ตอาจช้า'); }, 15000);
+    })();
+  </script>
 
   <script type="module" src="main.js"></script>
 </body>

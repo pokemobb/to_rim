@@ -36,6 +36,7 @@ const COLOR = {
 const VIEW = -1; // มองจากฝั่ง z ติดลบ = ฝั่งประตูคู่ด้านบนที่เดินเข้ามา (เปลี่ยนเป็น 1 ถ้าจะมองจากฝั่งตรงข้าม)
 
 const $ = (id) => document.getElementById(id);
+const clone = (data) => JSON.parse(JSON.stringify(data)); // structuredClone ไม่มีใน iPhone รุ่นเก่า
 const today = () => new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD ตามเวลาเครื่อง
 const thaiDate = (iso) => new Date(`${iso}T00:00`).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
 
@@ -50,7 +51,7 @@ const params = new URLSearchParams(location.search);
 const isAdmin = params.has('admin');
 
 const published = await fetch('layout.json', { cache: 'no-cache' }).then((r) => r.json());
-const layout = structuredClone(published);
+const layout = clone(published);
 if (isAdmin) {
   // ผังที่แอดมินแก้ค้างไว้ อยู่แค่ในเครื่องแอดมินจนกว่าจะเอา layout.json ไปแทนใน GitHub
   const draft = store.get('torim:draft');
@@ -734,6 +735,7 @@ function toast(text) {
 function shareUrl() {
   const name = nameInput.value.trim();
   const url = new URL(location.pathname, location.origin);
+  url.searchParams.set('openExternalBrowser', '1'); // เปิดจาก LINE แล้วให้เด้งไปเบราว์เซอร์จริง (เบราว์เซอร์ใน LINE บางเครื่องเปิด 3D ไม่ได้)
   if (groupId) {
     url.searchParams.set('g', groupId);
     return url;
@@ -873,7 +875,7 @@ $('adm-fill').addEventListener('click', () => {
 });
 
 // ทุกการแก้เป็นแค่ "ดูตัวอย่าง" ก่อน ต้องกดตกลงถึงจะบันทึก (saved = สถานะล่าสุดที่กดตกลงแล้ว)
-let saved = structuredClone(layout.tables);
+let saved = clone(layout.tables);
 const isPending = () => signature(layout.tables) !== signature(saved);
 
 function commit() {
@@ -889,7 +891,7 @@ const session = {
 };
 
 function keepLocally(message) {
-  saved = structuredClone(layout.tables);
+  saved = clone(layout.tables);
   store.set('torim:draft', saved);
   adminSel = null;
   renderAdmin();
@@ -940,8 +942,8 @@ async function publish(password = session.get()) {
 
   session.set(password);
   layout.tables = data.tables;
-  published.tables = structuredClone(data.tables);
-  saved = structuredClone(data.tables);
+  published.tables = clone(data.tables);
+  saved = clone(data.tables);
   store.set('torim:draft', null);
   $('adm-auth').hidden = true;
   $('adm-pass').value = '';
@@ -959,7 +961,7 @@ $('adm-pass').addEventListener('keydown', (e) => {
 });
 
 $('adm-cancel').addEventListener('click', () => {
-  layout.tables = structuredClone(saved);
+  layout.tables = clone(saved);
   $('adm-auth').hidden = true;
   buildTables();
   renderAdmin();
@@ -1062,8 +1064,8 @@ $('adm-enter').addEventListener('click', () => {
 
 $('adm-reset').addEventListener('click', () => {
   if (!window.confirm('ทิ้งการแก้ไขทั้งหมด แล้วกลับไปใช้ผังที่เผยแพร่อยู่?')) return;
-  layout.tables = structuredClone(published.tables);
-  saved = structuredClone(published.tables);
+  layout.tables = clone(published.tables);
+  saved = clone(published.tables);
   store.set('torim:draft', null);
   buildTables();
   renderAdmin();
@@ -1108,6 +1110,7 @@ window.addEventListener('resize', resize);
 resize();
 
 const clock = new THREE.Clock();
+window.torimReady = true; // บอกตัวเช็กใน index.html ว่าเปิดสำเร็จ
 renderer.setAnimationLoop(() => {
   const time = clock.getElapsedTime();
 
