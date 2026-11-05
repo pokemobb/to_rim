@@ -695,23 +695,51 @@ body.mascot-on #hint { display: none; }
   animation: walk 22s linear infinite;
 }
 .walker-art { width: 42px; height: 42px; animation: step 0.45s ease-in-out infinite alternate; transform-origin: 50% 100%; }
-@keyframes walk {
-  0% { transform: translateX(18px); }
-  50% { transform: translateX(calc(100vw - 60px)); }
-  100% { transform: translateX(18px); }
-}
 @keyframes step {
   from { transform: rotate(-6deg) translateY(0); }
   to { transform: rotate(6deg) translateY(-3px); }
-}
-@media (min-width: 560px) {
-  @keyframes walk {
-    0% { transform: translateX(calc(50vw - 240px)); }
-    50% { transform: translateX(calc(50vw + 200px)); }
-    100% { transform: translateX(calc(50vw - 240px)); }
-  }
 }
 @media (prefers-reduced-motion: reduce) { .walker, .walker-art { animation: none; } }
 @media (prefers-color-scheme: dark) {
   .icon-btn:not(.share), .photo-hero { background-color: var(--material-solid); }
 }
+
+/* ---------- กะทัดรัดลง ให้ตัวละครเด่นขึ้น ---------- */
+.card.top { padding: 6px 14px 6px 6px; }
+.title { font-size: 16px; gap: 4px; }
+.avatar.mini { width: 44px; height: 44px; margin: -14px 0 -10px -4px; }
+.dock-body { height: 192px; padding: 12px 14px 6px; }
+.pane-stack { gap: 8px; }
+#sheet { gap: 8px; }
+.table-no { font-size: 22px; }
+.table-title .one-line { font-size: 12px; }
+.icon-btn { width: 36px; height: 36px; min-height: 36px; font-size: 16px; }
+.photo-hero { height: 98px; border-radius: 18px; }
+.photo-cam { width: 36px; height: 36px; font-size: 18px; }
+.photo-empty b { font-size: 15px; }
+.photo-empty span { font-size: 12px; }
+.dock .actions button, .dock .share-row button, .dock .share-row input { min-height: 44px; font-size: 16px; }
+.tabbar { padding: 0 16px calc(6px + env(safe-area-inset-bottom)); }
+.tab { min-height: 40px; font-size: 13px; }
+.tab svg { width: 18px; height: 18px; }
+
+/* ตัวละครตัวใหญ่ขึ้น */
+.mascot-art { width: 124px; height: 124px; margin: -8px -6px -8px -10px; }
+.mascot-bubble { font-size: 14px; padding: 10px 13px; }
+.avatar { width: 68px; height: 68px; margin: -8px 0 -8px -6px; }
+.with-avatar { gap: 8px; }
+.food-title { font-size: 18px !important; }
+.slot { min-height: 54px; font-size: 22px; padding: 6px 12px; }
+#food-edit .chips { max-height: 52px; }
+.dock .big { font-size: 22px; }
+.walker { top: -56px; width: 64px; height: 64px; }
+.walker-art { width: 64px; height: 64px; margin: 0; }
+@keyframes walk {
+  0% { transform: translateX(12px); }
+  50% { transform: translateX(calc(100vw - 76px)); }
+  100% { transform: translateX(12px); }
+}
+/* แก้เมนู: รายการเมนูเลื่อนซ้ายขวาแถวเดียว ไม่โดนตัดครึ่ง */
+#food-edit .chips { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; max-height: none; padding-bottom: 2px; scrollbar-width: none; }
+#food-edit .chips::-webkit-scrollbar { display: none; }
+#food-edit .chip { flex: none; }

@@ -1186,7 +1186,7 @@ $('share').addEventListener('click', async () => {
 
   if (navigator.share) {
     try {
-      await navigator.share({ title: 'โต๊ะวันนี้', text, url: url.href });
+      await navigator.share({ title: 'วันนี้นั่งตรงไหนดี', text, url: url.href });
       return;
     } catch (err) {
       if (err.name === 'AbortError') return;
