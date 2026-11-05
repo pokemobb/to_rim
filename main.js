@@ -701,7 +701,30 @@ canvas.addEventListener('pointercancel', (e) => {
   if (!fingers.size) pinching = false;
   downAt = null;
 });
-let lastPet = { cat: null, at: 0 };
+// แตะสองที: มุม 1x = ซูมเข้า (โดนแมว = บินไปหาแมวใกล้สุด, ที่อื่น = 2x ตรงที่แตะ) / ซูมอยู่แล้ว = กลับ 1x
+// แตะโต๊ะทีเดียวรอให้แน่ใจก่อนว่าไม่ใช่แตะสองที (ไม่งั้นจะเลือกโต๊ะทุกครั้งที่จะซูม)
+const DOUBLE_MS = 300;
+let lastTap = null;
+let tapTimer = 0;
+function zoomByDoubleTap(pt, cat) {
+  if (zoomLevel > 1.15) {
+    const target = new THREE.Vector3(clampX(controls.target.x), 0, lock.z);
+    return flyTo(viewFrom(target, lock.d), target, 500);
+  }
+  if (cat) return flyToCat(cat);
+  aim(pt);
+  const p = raycaster.intersectObject(floor, false)[0]?.point ?? controls.target;
+  const d = lock.d / 2;
+  const target = new THREE.Vector3(clampX(p.x, d * lock.perMeter), 0, clampZ(p.z, 2));
+  flyTo(viewFrom(target, d), target, 500);
+}
+function singleTap(pt) {
+  if (mode === 'owner') {
+    const id = tableAt(pt);
+    if (id) ownerPick(id);
+    else if (sheetPending) cancelPick(); // แตะที่ว่างตอนยังไม่กดจอง = ยกเลิก
+  }
+}
 canvas.addEventListener('pointerup', (e) => {
   fingers.delete(e.pointerId);
   if (pinching) {
@@ -713,25 +736,26 @@ canvas.addEventListener('pointerup', (e) => {
   const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
   downAt = null;
   if (moved > 6) return;
-  if (mode !== 'admin') {
-    const cat = catAt(e);
-    if (cat) {
-      // แตะแมวตัวเดิมสองทีติดกัน = กล้องบินเข้าไปดูใกล้ๆ
-      const now = performance.now();
-      if (lastPet.cat === cat && now - lastPet.at < 400) flyToCat(cat);
-      lastPet = { cat, at: now };
-      return petCat(cat);
-    }
-  }
-  if (mode === 'owner') {
-    const id = tableAt(e);
-    if (id) ownerPick(id);
-    else if (sheetPending) cancelPick(); // แตะที่ว่างตอนยังไม่กดจอง = ยกเลิก
-  } else if (mode === 'admin') {
-    const id = tableAt(e);
-    adminSel = id ? tableById.get(id) : cellAt(e);
+  const pt = { clientX: e.clientX, clientY: e.clientY };
+  if (mode === 'admin') {
+    const id = tableAt(pt);
+    adminSel = id ? tableById.get(id) : cellAt(pt);
     renderAdmin();
+    return;
   }
+  const cat = catAt(pt);
+  const now = performance.now();
+  if (lastTap && now - lastTap.at < DOUBLE_MS && Math.hypot(pt.clientX - lastTap.x, pt.clientY - lastTap.y) < 40) {
+    clearTimeout(tapTimer);
+    lastTap = null;
+    if (cat) petCat(cat);
+    zoomByDoubleTap(pt, cat);
+    return;
+  }
+  lastTap = { at: now, x: pt.clientX, y: pt.clientY };
+  if (cat) return petCat(cat);
+  clearTimeout(tapTimer);
+  tapTimer = setTimeout(() => singleTap(pt), DOUBLE_MS);
 });
 canvas.addEventListener('pointermove', (e) => {
   if (e.pointerType !== 'mouse' || mode === 'friend' || e.buttons) return;
