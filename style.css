@@ -872,3 +872,62 @@ body.mascot-on #hint { display: none; }
 @media (prefers-color-scheme: dark) {
   .photo-album, .photo-cam { background: var(--fill-strong); }
 }
+
+/* ---------- ป้ายโต๊ะที่เราจอง: แดงสด ขอบขาว มีวงแสงกระเพื่อม เห็นชัดจากทั้งแผนที่ ---------- */
+.callout .bubble {
+  gap: 7px;
+  padding: 6px 15px 6px 6px;
+  background: linear-gradient(135deg, #ff6a5f, #ff2d55);
+  color: #fff;
+  box-shadow: 0 0 0 3px #fff, 0 8px 20px rgba(255, 45, 85, 0.45);
+}
+.callout .bubble::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  animation: halo 1.6s ease-out infinite;
+}
+@keyframes halo {
+  from { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.55); }
+  to { box-shadow: 0 0 0 14px rgba(255, 59, 48, 0); }
+}
+.callout .bubble::after { bottom: -9px; margin-left: -8px; border-width: 9px 8px 0; border-top-color: #fff; }
+.callout-char {
+  width: 42px; height: 42px; margin: -12px 0 -12px -6px; padding: 3px;
+  border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18); box-sizing: border-box;
+}
+.callout-label { display: flex; flex-direction: column; gap: 3px; }
+.callout-label small { font: 600 10px/1 var(--font); opacity: 0.92; letter-spacing: 0.2px; }
+.callout-text { font: 800 17px/1 var(--font); }
+
+/* ---------- แตะแมว: ป้ายเมี้ยวสีชมพู + หัวใจลอย ----------
+   CSS2DRenderer ตั้ง transform ที่ .purr เอง จึงแอนิเมชันที่ .purr-b แทน */
+.purr { pointer-events: none; }
+.purr-b { position: relative; transform: translateY(-100%); padding-bottom: 16px; opacity: 0; }
+.purr-b.go { animation: purr 1.8s ease-out forwards; }
+.purr-t {
+  display: block; padding: 5px 10px; border-radius: 12px;
+  background: #ff2d55; color: #fff; font: 700 12px/1.2 var(--font); white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(255, 45, 85, 0.35);
+}
+.purr-b i {
+  position: absolute; bottom: 0; left: 50%; width: 15px; height: 15px; opacity: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ff2d55' d='M12 21s-7.5-4.6-9.5-9.2C1 8.2 3.4 5 6.8 5c2 0 3.6 1.1 5.2 3 1.6-1.9 3.2-3 5.2-3 3.4 0 5.8 3.2 4.3 6.8C19.5 16.4 12 21 12 21Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.purr-b.go i { animation: heart 1.3s ease-out forwards; }
+.purr-b i:nth-of-type(1) { --dx: -26px; animation-delay: 0.05s; }
+.purr-b i:nth-of-type(2) { --dx: 2px; animation-delay: 0.22s; }
+.purr-b i:nth-of-type(3) { --dx: 28px; animation-delay: 0.4s; }
+@keyframes heart {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(0.4); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), -52px) scale(1.15); }
+}
+@keyframes purr {
+  0% { opacity: 0; transform: translateY(-100%) scale(0.5); }
+  14% { opacity: 1; transform: translateY(-100%) scale(1.08); }
+  24% { transform: translateY(-100%) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(calc(-100% - 10px)); }
+}

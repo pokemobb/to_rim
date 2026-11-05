@@ -338,7 +338,8 @@ pin.add(stem, pinDot);
 const calloutEl = document.createElement('div');
 calloutEl.className = 'callout';
 // หมุดเป็นตัวละครน่ารักโผล่หัวอยู่บนป้าย เพื่อนมองหาโต๊ะได้ง่ายขึ้น
-calloutEl.innerHTML = '<div class="bubble"><span class="callout-char" data-char="cat"></span><span class="callout-text"></span></div>';
+calloutEl.innerHTML = '<div class="bubble"><span class="callout-char" data-char="cat"></span>'
+  + '<span class="callout-label"><small>ที่นั่งของเรา</small><b class="callout-text"></b></span></div>';
 const callout = new CSS2DObject(calloutEl);
 paintCharacters(calloutEl);
 callout.position.y = CALLOUT_Y;
@@ -403,6 +404,50 @@ function updateChats(now) {
   }
 }
 
+// ---------- แตะแมวในแผนที่: กระโดดดึ๋ง หัวใจลอย และร้องเมี้ยว ----------
+const PURRS = {
+  awake: ['เมี้ยว~', 'ขอปลาทูหน่อยน้า', 'ลูบหัวอีกได้ไหม', 'เหมียว! 💕', 'หิวแล้วอะ', 'รักนะ', 'เล่นกันไหม?', 'ปุกปุย~', 'เกาคางหน่อย'],
+  sleep: ['zZz…', 'ง่วงงง อย่าปลุกน้า', 'ฝันถึงปลาทูอยู่…'],
+  guard: ['เฝ้าโต๊ะให้อยู่นะ!', 'ที่นี่ของเราแล้ว 🐾', 'รีบมานะ รออยู่~', 'ไม่ให้ใครนั่งเลย!'],
+};
+const purrPool = Array.from({ length: 2 }, () => {
+  const el = document.createElement('div');
+  el.className = 'purr';
+  el.innerHTML = '<div class="purr-b"><span class="purr-t"></span><i></i><i></i><i></i></div>';
+  const obj = new CSS2DObject(el);
+  obj.visible = false;
+  scene.add(obj);
+  return { obj, el, until: 0 };
+});
+const catNdc = new THREE.Vector3();
+function catAt(e) {
+  const r = canvas.getBoundingClientRect();
+  let best = null;
+  let bestD = 20; // แตะห่างจากหัวแมวไม่เกิน 20px
+  for (const c of people.cats()) {
+    catNdc.copy(c.pos).project(camera);
+    if (catNdc.z > 1) continue;
+    const d = Math.hypot(r.left + ((catNdc.x + 1) / 2) * r.width - e.clientX, r.top + ((1 - catNdc.y) / 2) * r.height - e.clientY);
+    if (d < bestD) { bestD = d; best = c; }
+  }
+  return best;
+}
+function petCat(c) {
+  const { pos, kind } = people.poke(c);
+  const lines = PURRS[kind] ?? PURRS.awake;
+  const fx = purrPool.find((p) => !p.obj.visible) ?? purrPool[0];
+  fx.el.querySelector('.purr-t').textContent = lines[Math.floor(Math.random() * lines.length)];
+  fx.obj.position.copy(pos);
+  fx.obj.position.y += 0.3;
+  fx.obj.visible = true;
+  fx.until = performance.now() + 1800;
+  const b = fx.el.firstChild;
+  b.classList.remove('go');
+  void b.offsetWidth;
+  b.classList.add('go');
+  navigator.vibrate?.(12);
+}
+
 // ---------- เส้นนำทางจากประตูทางเข้าไปถึงโต๊ะ ----------
 // เดินเข้าประตู → ทางเดินหน้าแถวที่ 1 → ทางเดินข้างแถวของโต๊ะ (ช่องระหว่างหัวโต๊ะ) → ถึงหัวโต๊ะ
 const doors = layout.landmarks.filter((l) => l.kind === 'door');
@@ -416,6 +461,7 @@ const GUIDE_BLUE = 0x007aff;
 const GUIDE_WIDTH = 0.5;
 const GUIDE_Y = 0.04;
 
+// รอยเท้าแมวสีขาวบนแถบสีฟ้า เดินสลับซ้ายขวาจากประตูไปหาโต๊ะ (1 ช่องลาย = 1 เมตร)
 const chevrons = (() => {
   const c = document.createElement('canvas');
   c.width = 128;
@@ -423,14 +469,15 @@ const chevrons = (() => {
   const g = c.getContext('2d');
   g.fillStyle = '#007aff';
   g.fillRect(0, 0, 128, 64);
-  g.strokeStyle = '#fff';
-  g.lineWidth = 9;
-  g.lineCap = g.lineJoin = 'round';
-  g.beginPath();
-  g.moveTo(50, 17);
-  g.lineTo(76, 32);
-  g.lineTo(50, 47);
-  g.stroke();
+  g.fillStyle = '#fff';
+  const dot = (x, y, rx, ry) => { g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); g.fill(); };
+  // อุ้งเท้าชี้ไปทาง +x: ฝ่าเท้าใหญ่ + นิ้วกลมสี่นิ้ว
+  const paw = (x, y) => {
+    dot(x - 4, y, 7.5, 9);
+    for (const [dx, dy] of [[7, -10], [11.5, -3.6], [11.5, 3.6], [7, 10]]) dot(x + dx, y + dy, 3.6, 3.6);
+  };
+  paw(30, 21);
+  paw(94, 43);
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = THREE.RepeatWrapping;
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -614,6 +661,10 @@ canvas.addEventListener('pointerup', (e) => {
   const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
   downAt = null;
   if (moved > 6) return;
+  if (mode !== 'admin') {
+    const cat = catAt(e);
+    if (cat) return petCat(cat);
+  }
   if (mode === 'owner') {
     const id = tableAt(e);
     if (id) ownerPick(id);
@@ -1643,7 +1694,8 @@ renderer.setAnimationLoop(() => {
 
   people.update(time);
   updateChats(performance.now());
-  chevrons.offset.x = -((time * 1.2) % 1); // ลูกศรไหลจากประตูไปหาโต๊ะ
+  for (const p of purrPool) if (p.obj.visible && (performance.now() > p.until || mode === 'admin')) p.obj.visible = false;
+  chevrons.offset.x = -((time * 0.7) % 1); // รอยเท้าแมวเดินจากประตูไปหาโต๊ะ
   const bob = Math.sin(time * 2.2) * 0.12;
   callout.position.y = CALLOUT_Y + bob;
   stem.scale.y = CALLOUT_Y + bob - 0.95;

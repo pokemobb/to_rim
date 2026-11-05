@@ -1,25 +1,49 @@
 import * as THREE from 'three';
 
-// แมวเหมียวในโรงอาหาร: นั่งบนเก้าอี้กินข้าว และเดินสี่ขาไปมาตามทางเดิน
+// แมวเหมียวในโรงอาหาร: นั่งกินข้าว เลียอุ้งเท้า นอนขดหลับ บิดขี้เกียจ เดินเล่น และเฝ้าโต๊ะที่เราจองไว้
 // ใช้ InstancedMesh ทั้งหมด แมวหลายร้อยตัวก็ยังลื่นบนมือถือ
 // (ชื่อไฟล์/ฟังก์ชันยังเป็น people เพื่อให้ main.js เรียกได้เหมือนเดิม)
 
 const C = (c) => new THREE.Color(c);
-// สีขนแมวแบบสุ่ม: สีแมวจริงเท่านั้น ไม่เพิ่มสีให้แผนที่วุ่นวาย
-const FURS = [
-  { fur: C('#f5a04a'), patch: C('#fff8ef') }, // ส้ม
-  { fur: C('#f7d8a8'), patch: C('#fffaf3') }, // ครีม
-  { fur: C('#fffaf4'), patch: C('#ffe3cc') }, // ขาว
-  { fur: C('#a9adb8'), patch: C('#ffffff') }, // เทา
-  { fur: C('#3f3a44'), patch: C('#ffffff') }, // ดำ
-  { fur: C('#b07a4e'), patch: C('#fff3e6') }, // น้ำตาล
-];
 const EAR_IN = C('#ff9fb5');
 const NOSE = C('#ff7f9e');
 const EYE = C('#2b2030');
 const FOOD = [C('#f4a259'), C('#e9c46a'), C('#bc4b51'), C('#8cb369'), C('#f6e7cb')];
 const DRINK = [C('#e76f51'), C('#2a9d8f'), C('#f4d35e'), C('#6d597a')];
 const WHITE = C('#fbfbf8');
+const ORANGE = C('#f5a04a');
+const INKY = C('#3f3a44');
+const STRIPE = C('#7a5638');
+const POINT = C('#5a4334');
+
+// ลายขนแมว: สีหลัก + ส่วนที่เปลี่ยนสีได้ (หู ขา อุ้งเท้า หาง ปาก ตา) + ลายบนตัว/หน้า
+// ลายตัว [สี, [ข้าง, หลัง, แนวกระดูกสันหลัง], ขนาด] เทียบกับขนาดตัว ใช้ได้ทั้งท่านั่งและท่าเดิน
+// ลายหน้า [สี, [x, y, z], ขนาด] เทียบกับขนาดหัว (z ชี้ไปทางหน้า)
+function coat(o) {
+  return { ears: [o.fur, o.fur], leg: o.fur, paw: o.patch, tail: o.fur, muzzle: o.patch, eye: EYE, body: [], face: [], ...o };
+}
+const FURS = [
+  coat({ fur: ORANGE, patch: C('#fff8ef') }), // ส้ม
+  coat({ fur: C('#f7d8a8'), patch: C('#fffaf3') }), // ครีม
+  coat({ fur: C('#fffaf4'), patch: C('#ffe3cc') }), // ขาว
+  coat({ fur: C('#a9adb8'), patch: C('#ffffff') }), // เทา
+  coat({ fur: INKY, patch: C('#ffffff') }), // ดำ
+  coat({ fur: C('#b07a4e'), patch: C('#fff3e6') }), // น้ำตาล
+  coat({ // สามสี
+    fur: C('#fffaf4'), patch: C('#ffffff'), ears: [ORANGE, INKY], tail: ORANGE,
+    body: [[ORANGE, [0.5, 0.6, -0.3], [0.6, 0.5, 0.6]], [INKY, [-0.5, 0.55, 0.35], [0.55, 0.5, 0.5]]],
+    face: [[ORANGE, [0.55, 0.55, -0.15], [0.55, 0.55, 0.6]], [INKY, [-0.55, 0.6, -0.25], [0.5, 0.5, 0.5]]],
+  }),
+  coat({ // ลายสลิด
+    fur: C('#c49a6c'), patch: C('#fbf1e3'),
+    body: [-0.5, -0.1, 0.3].map((a) => [STRIPE, [0, 0.82, a], [0.82, 0.3, 0.13]]),
+    face: [-0.32, 0, 0.32].map((x) => [STRIPE, [x, 0.62, 0.5], [0.12, 0.34, 0.32]]),
+  }),
+  coat({ // วิเชียรมาศ: หน้า หู ขา หาง สีเข้ม ตาฟ้า
+    fur: C('#f3e7d3'), patch: C('#fbf6ec'), ears: [POINT, POINT], leg: POINT, paw: POINT, tail: POINT, muzzle: POINT,
+    eye: C('#3d8bfd'), face: [[POINT, [0, -0.2, 0.72], [0.6, 0.55, 0.38]]],
+  }),
+];
 
 const pick = (rand, list) => list[Math.floor(rand() * list.length)];
 const hash = (text) => [...text].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7) >>> 0;
@@ -34,6 +58,7 @@ const UP = new THREE.Vector3(0, 1, 0);
 const RIGHT = new THREE.Vector3(1, 0, 0);
 const FWD = new THREE.Vector3(0, 0, 1);
 const SEAT_Y = 0.47; // ความสูงที่นั่งเก้าอี้ใน main.js
+const TABLE_Y = 0.77; // ความสูงท็อปโต๊ะ
 
 export function createPeople(scene, grid, types) {
   // สีสดตลอด ไม่จางลงตอนโฟกัสโต๊ะที่จอง
@@ -64,6 +89,7 @@ export function createPeople(scene, grid, types) {
   const catMeshes = (n) => ({
     body: mesh(geo.ball, n * 2, true), // ตัว + หัว
     soft: mesh(geo.ball, n * 5), // อก อุ้งเท้า ปาก จมูก (ชิ้นเล็กไม่ต้องมีเงา)
+    mark: mesh(geo.ball, n * 6), // ลายขน
     eye: mesh(geo.ball, n * 2),
     ear: mesh(geo.ear, n * 2),
     earIn: mesh(geo.earIn, n * 2),
@@ -73,10 +99,14 @@ export function createPeople(scene, grid, types) {
     food: mesh(geo.food, n),
     cup: mesh(geo.cup, n),
   });
+  const dropSet = (set) => Object.values(set).forEach((m) => { group.remove(m); m.dispose(); });
 
   const m4 = new THREE.Matrix4();
   const v = new THREE.Vector3();
   const sc = new THREE.Vector3();
+  const tv = new THREE.Vector3();
+  const hc = new THREE.Vector3();
+  const bc = new THREE.Vector3();
   const tmpQ = new THREE.Quaternion();
   const one = new THREE.Vector3(1, 1, 1);
   function put(m, pos, quat, color, scale = one) {
@@ -89,45 +119,197 @@ export function createPeople(scene, grid, types) {
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
   });
   const rot = (quat, axis, angle) => quat.clone().multiply(tmpQ.setFromAxisAngle(axis, angle));
+  const offset = (center, quat, x, y, z) => tv.set(x, y, z).applyQuaternion(quat).add(center);
+  // ตัวช่วยวางตำแหน่งตามทิศที่แมวหันหน้า: at(fwd, y, side)
+  function frame(px, pz, yaw) {
+    const fx = Math.sin(yaw);
+    const fz = Math.cos(yaw);
+    return {
+      q: new THREE.Quaternion().setFromAxisAngle(UP, yaw),
+      at: (f, y, side) => v.set(px + fx * f + fz * side, y, pz + fz * f - fx * side),
+    };
+  }
 
-  // หัวแมว: หัวกลม หูแหลมมีสีชมพูข้างใน ตาดำโต ปากขาว จมูกชมพู
-  // at(fwd, y, side) แปลงตำแหน่งตามทิศที่แมวหันหน้า เป็นตำแหน่งในโลก
-  function head(set, at, f, y, cat, q, tilt = 0) {
+  // หัวแมว: หัวกลม หูแหลมมีสีชมพูข้างใน ตาโต ปาก จมูกชมพู (closed = หลับตา)
+  function head(set, at, f, y, cat, q, tilt = 0, closed = false) {
     const hq = rot(q, FWD, tilt);
-    put(set.body, at(f, y, 0), hq, cat.fur, sc.set(0.17, 0.15, 0.155));
-    put(set.soft, at(f + 0.125, y - 0.04, 0), hq, cat.patch, sc.set(0.075, 0.05, 0.05));
-    put(set.soft, at(f + 0.172, y - 0.018, 0), hq, NOSE, sc.set(0.018, 0.014, 0.014));
+    hc.copy(at(f, y, 0));
+    const o = (x, yy, z) => offset(hc, hq, x, yy, z);
+    put(set.body, hc, hq, cat.fur, sc.set(0.17, 0.15, 0.155));
+    for (const [col, d, s] of cat.face) put(set.mark, o(d[0] * 0.17, d[1] * 0.15, d[2] * 0.155), hq, col, sc.set(s[0] * 0.17, s[1] * 0.15, s[2] * 0.155));
+    put(set.soft, o(0, -0.04, 0.125), hq, cat.muzzle, sc.set(0.075, 0.05, 0.05));
+    put(set.soft, o(0, -0.018, 0.172), hq, NOSE, sc.set(0.018, 0.014, 0.014));
     for (const s of [1, -1]) {
-      put(set.eye, at(f + 0.128, y + 0.025, 0.062 * s), hq, EYE, sc.set(0.024, 0.03, 0.02));
+      put(set.eye, o(0.062 * s, 0.025, 0.128), hq, closed ? EYE : cat.eye, closed ? sc.set(0.026, 0.007, 0.02) : sc.set(0.024, 0.03, 0.02));
       const eq = rot(hq, FWD, -0.32 * s);
-      put(set.ear, at(f - 0.01, y + 0.15, 0.092 * s), eq, cat.fur);
-      put(set.earIn, at(f + 0.012, y + 0.142, 0.09 * s), eq, EAR_IN);
+      put(set.ear, o(0.092 * s, 0.15, -0.01), eq, cat.ears[s > 0 ? 0 : 1]);
+      put(set.earIn, o(0.09 * s, 0.142, 0.012), eq, EAR_IN);
     }
   }
 
-  // ---------- แมวนั่งบนเก้าอี้ ----------
-  let seated = null;
+  // ลายบนตัว: upright = ตัวตั้ง (ท่านั่ง) แนวกระดูกสันหลังชี้ขึ้น หลังหันไปด้านหลัง
+  function bodyMarks(set, cat, center, quat, S, upright) {
+    for (const [col, [ds, dd, da], [ss, sd, sa]] of cat.body) {
+      const x = ds;
+      const y = upright ? da : dd;
+      const z = upright ? -dd : da;
+      put(set.mark, offset(center, quat, x * S[0], y * S[1], z * S[2]), quat, col,
+        sc.set(ss * S[0], (upright ? sa : sd) * S[1], (upright ? sd : sa) * S[2]));
+    }
+  }
+
+  // ---------- ท่าต่างๆ (dy = ยกตัวขึ้นตอนกระโดดดึ๋งเวลาโดนแตะ) ----------
+  const SIT = [0.2, 0.23, 0.2];
+  // นั่งตั้งตรงบนเก้าอี้ (lick > 0 = ยกอุ้งเท้าขึ้นมาเลีย)
+  function drawSit(set, p, dy = 0, lick = 0, time = 0) {
+    const { at, q, cat } = p;
+    bc.copy(at(-0.02, SEAT_Y + 0.21 + dy, 0));
+    put(set.body, bc, q, cat.fur, sc.set(...SIT));
+    bodyMarks(set, cat, bc, q, SIT, true);
+    put(set.soft, at(0.13, SEAT_Y + 0.2 + dy, 0), q, cat.patch, sc.set(0.11, 0.14, 0.08));
+    for (const k of [1, -1]) {
+      if (lick && k === 1) {
+        const lap = Math.sin(time * 14) * 0.022 * lick;
+        put(set.soft, at(0.14 + 0.08 * lick, SEAT_Y + 0.04 + 0.38 * lick + lap + dy, 0.07 - 0.03 * lick), q, cat.paw, sc.set(0.05, 0.045, 0.05));
+      } else {
+        put(set.soft, at(0.14, SEAT_Y + 0.04 + dy, 0.07 * k), q, cat.paw, sc.set(0.05, 0.04, 0.06));
+      }
+    }
+    head(set, at, 0.05 + 0.03 * lick, SEAT_Y + 0.53 + dy - 0.04 * lick, cat, lick ? rot(q, RIGHT, 0.3 * lick) : q, p.tilt * (1 - lick), lick > 0.5);
+    put(set.tail, at(-0.12, SEAT_Y + 0.05 + dy, 0.13 * p.side), rot(rot(q, UP, 0.5 * p.side), RIGHT, Math.PI / 2), cat.tail);
+  }
+
+  // นอนขดหลับบนพื้น หายใจขึ้นลงช้าๆ หางพันรอบตัว
+  function drawSleep(set, p, dy, time) {
+    const { at, q, cat, side } = p;
+    const S = [0.2, 0.12 * (1 + Math.sin(time * 2 + p.ph) * 0.06), 0.25];
+    bc.copy(at(0, 0.12 + dy, 0));
+    put(set.body, bc, q, cat.fur, sc.set(...S));
+    bodyMarks(set, cat, bc, q, S, false);
+    put(set.soft, at(0.25, 0.04 + dy, -0.07 * side), q, cat.paw, sc.set(0.05, 0.035, 0.06));
+    head(set, at, 0.2, 0.15 + dy, cat, rot(q, UP, -0.5 * side), 0.45 * side, true);
+    put(set.tail, at(-0.14, 0.05 + dy, 0.19 * side), rot(rot(q, UP, -0.3 * side), RIGHT, Math.PI / 2), cat.tail);
+  }
+
+  // บิดขี้เกียจ: ก้มหน้า ยืดขาหน้า ก้นโด่ง แล้วกลับมายืน วนไปเรื่อยๆ
+  const WALK = [0.15, 0.14, 0.27];
+  function drawStretch(set, p, dy, time) {
+    const { at, q, cat } = p;
+    const cyc = ((time + p.ph) % 6) / 6;
+    const s = Math.pow(Math.max(0, Math.sin(cyc * Math.PI * 2)), 0.7);
+    const bq = rot(q, RIGHT, 0.38 * s);
+    bc.copy(at(-0.03 * s, 0.34 - 0.07 * s + dy, 0));
+    put(set.body, bc, bq, cat.fur, sc.set(...WALK));
+    put(set.soft, offset(bc, bq, 0, -0.05, 0.06), bq, cat.patch, sc.set(0.1, 0.08, 0.17));
+    bodyMarks(set, cat, bc, bq, WALK, false);
+    head(set, at, 0.3, 0.5 - 0.24 * s + dy, cat, q, 0, s > 0.6);
+    for (const [f, side, front] of [[0.15, 0.08, 1], [0.15, -0.08, 1], [-0.15, 0.08, 0], [-0.15, -0.08, 0]]) {
+      if (front) put(set.leg, at(f + 0.02 * s, 0.27 - 0.15 * s + dy, side), rot(q, RIGHT, -1.25 * s), cat.leg);
+      else put(set.leg, at(f, 0.27 + 0.03 * s + dy, side), q, cat.leg);
+    }
+    put(set.tail, offset(bc, bq, 0, 0.06, -0.24), rot(rot(bq, RIGHT, -0.35 + 0.25 * s), FWD, Math.sin(time * 2) * 0.2), cat.tail); // หางชูขึ้นติดก้น
+  }
+
+  // เดินสี่ขา ก้าวสลับแบบทแยง หางชี้ขึ้นแกว่งซ้ายขวา
+  function drawWalk(set, at, q, cat, step, swing, dy) {
+    bc.copy(at(0, 0.34 + dy, 0));
+    put(set.body, bc, q, cat.fur, sc.set(...WALK));
+    put(set.soft, at(0.06, 0.29 + dy, 0), q, cat.patch, sc.set(0.1, 0.08, 0.17));
+    bodyMarks(set, cat, bc, q, WALK, false);
+    head(set, at, 0.3, 0.5 + dy, cat, q, Math.sin(step * 0.5) * 0.08);
+    for (const [f, side, ph] of [[0.15, 0.08, 1], [0.15, -0.08, -1], [-0.15, 0.08, -1], [-0.15, -0.08, 1]]) {
+      put(set.leg, at(f, 0.27 + dy, side), rot(q, RIGHT, swing * ph), cat.leg);
+    }
+    put(set.tail, at(-0.25, 0.4 + dy, 0), rot(rot(q, RIGHT, -0.45), FWD, Math.sin(step * 0.5) * 0.35), cat.tail);
+  }
+
+  // แมวเฝ้าโต๊ะที่จอง: หมอบบนโต๊ะ หันหน้าหากล้อง ส่ายหัวมองหาเรา กระพริบตา หางกระดิก
+  const LOAF = [0.18, 0.12, 0.23];
+  function drawGuard(set, p, dy, time) {
+    const { at, q, cat } = p;
+    bc.copy(at(0, TABLE_Y + 0.11 + dy, 0));
+    put(set.body, bc, q, cat.fur, sc.set(...LOAF));
+    bodyMarks(set, cat, bc, q, LOAF, false);
+    put(set.soft, at(0.17, TABLE_Y + 0.1 + dy, 0), q, cat.patch, sc.set(0.1, 0.08, 0.08));
+    for (const k of [1, -1]) put(set.soft, at(0.22, TABLE_Y + 0.03 + dy, 0.07 * k), q, cat.paw, sc.set(0.05, 0.035, 0.06));
+    const look = Math.sin(time * 0.7) * 0.5;
+    head(set, at, 0.2, TABLE_Y + 0.27 + dy, cat, rot(q, UP, look), Math.sin(time * 0.9) * 0.15, time % 3.2 < 0.15);
+    put(set.tail, at(-0.2, TABLE_Y + 0.05 + dy, 0), rot(rot(q, UP, Math.sin(time * 3) * 0.7), RIGHT, -Math.PI / 2), cat.tail);
+  }
+
+  // กระโดดดึ๋งสองที ตอนโดนแตะ
+  let now = 0;
+  function hopDy(c) {
+    if (!c.hopAt) return 0;
+    const u = (now - c.hopAt) / 0.9;
+    if (u >= 1 || u < 0) { c.hopAt = 0; return 0; }
+    return Math.abs(Math.sin(u * Math.PI * 2)) * 0.28 * (1 - u * 0.4);
+  }
+
+  // ---------- แมวตามโต๊ะ ----------
+  let seated = null; // แมวนั่งนิ่งๆ วาดครั้งเดียว
   let capacity = 0;
+  let live = null; // แมวที่ขยับทุกเฟรม (เลียอุ้งเท้า หลับ บิดขี้เกียจ เฝ้าโต๊ะ)
+  let liveCap = 0;
+  let sitters = [];
+  let movers = [];
   let spots = []; // ตำแหน่งเหนือหัวแมวที่นั่งอยู่ ไว้ให้ main.js วางป้ายคำพูด
+  const hopping = new Set();
+
+  function snapshot(set) {
+    const s = {};
+    for (const k in set) s[k] = set[k].count;
+    return s;
+  }
+  // วาดแมวนิ่งตัวเดิมซ้ำที่ช่องเดิม (ตอนกระโดด) โดยไม่ต้องวาดทั้งโรงอาหารใหม่
+  function redraw(set, starts, fn) {
+    const saved = snapshot(set);
+    for (const k in set) set[k].count = starts[k];
+    fn();
+    for (const k in set) set[k].count = saved[k];
+    flush(set);
+  }
+
+  function floorCat(t, kind, rand) {
+    // ช่องว่างระหว่างแถวโต๊ะ (หลังพนักเก้าอี้) ตัวแมวหันตามแนวแถว
+    const side = rand() < 0.5 ? 1 : -1;
+    const x = t.x + (rand() - 0.5) * 1.4;
+    const z = t.z + side * grid.rowSpacing / 2;
+    const yaw = (rand() < 0.5 ? 1 : -1) * Math.PI / 2 + (rand() - 0.5) * 0.3;
+    return {
+      kind, ...frame(x, z, yaw), cat: pick(rand, FURS), side: rand() < 0.5 ? 1 : -1, ph: rand() * 10,
+      pos: new THREE.Vector3(x, kind === 'sleep' ? 0.28 : 0.5, z),
+    };
+  }
 
   function seat(tables, skipId) {
     const seats = tables.reduce((n, t) => n + (types[t.type] ?? types.long6).seats.length, 0);
     if (seats > capacity) {
-      if (seated) Object.values(seated).forEach((m) => { group.remove(m); m.dispose(); });
+      if (seated) dropSet(seated);
       capacity = seats;
       seated = catMeshes(seats);
     }
     for (const m of Object.values(seated)) m.count = 0;
+    sitters = [];
+    movers = [];
     spots = [];
+    hopping.clear();
 
     for (const t of tables) {
-      if (t.id === skipId) continue; // โต๊ะที่จองไว้ปล่อยว่าง ให้เห็นหมุดชัดๆ
-      const rand = seeded(hash(t.id));
-      const busy = rand(); // บางโต๊ะว่าง บางโต๊ะแน่น
       const type = types[t.type] ?? types.long6;
       const r = THREE.MathUtils.degToRad(t.rot ?? 0);
       const c = Math.cos(r);
       const s = Math.sin(r);
+      if (t.id === skipId) {
+        // โต๊ะที่จองไว้: ไม่มีใครนั่ง มีแมวส้มตัวเดียวหมอบเฝ้าอยู่บนโต๊ะ (หลบก้านหมุดตรงกลาง)
+        const lx = Math.max(0.28, type.w / 2 - 0.45);
+        const px = t.x + lx * c;
+        const pz = t.z - lx * s;
+        movers.push({ kind: 'guard', ...frame(px, pz, Math.PI), cat: FURS[0], pos: new THREE.Vector3(px, TABLE_Y + 0.3, pz) });
+        continue;
+      }
+      const rand = seeded(hash(t.id));
+      const busy = rand(); // บางโต๊ะว่าง บางโต๊ะแน่น
       for (const [sx, sz] of type.seats) {
         if (rand() > 0.04 + busy * 0.24) continue; // เฉลี่ยราว 1 ใน 6 ของที่นั่ง โปร่งตา
         // หันหน้าเข้าหาโต๊ะ
@@ -137,27 +319,36 @@ export function createPeople(scene, grid, types) {
         const pz = t.z - sx * s + sz * c;
         const fx = lx * c + lz * s;
         const fz = -lx * s + lz * c;
-        const q = new THREE.Quaternion().setFromAxisAngle(UP, Math.atan2(fx, fz));
-        const at = (f, y, side) => v.set(px + fx * f + fz * side, y, pz + fz * f - fx * side);
-        const cat = pick(rand, FURS);
-        const tilt = (rand() - 0.5) * 0.5; // เอียงคอนิดๆ ให้แต่ละตัวไม่เหมือนกัน
-
-        // ตัวนั่งตั้งตรง อกขาว อุ้งเท้าหน้าสองข้าง
-        put(seated.body, at(-0.02, SEAT_Y + 0.21, 0), q, cat.fur, sc.set(0.2, 0.23, 0.2));
-        put(seated.soft, at(0.13, SEAT_Y + 0.2, 0), q, cat.patch, sc.set(0.11, 0.14, 0.08));
-        for (const k of [1, -1]) put(seated.soft, at(0.14, SEAT_Y + 0.04, 0.07 * k), q, cat.patch, sc.set(0.05, 0.04, 0.06));
-        head(seated, at, 0.05, SEAT_Y + 0.53, cat, q, tilt);
+        const p = {
+          kind: 'sit', ...frame(px, pz, Math.atan2(fx, fz)), cat: pick(rand, FURS),
+          tilt: (rand() - 0.5) * 0.5, side: rand() < 0.5 ? 1 : -1, ph: rand() * 10,
+          pos: new THREE.Vector3(px, SEAT_Y + 0.6, pz),
+        };
         spots.push(new THREE.Vector3(px, SEAT_Y + 0.78, pz));
-        // หางวางพาดข้างตัวบนเก้าอี้
-        const side = rand() < 0.5 ? 1 : -1;
-        put(seated.tail, at(-0.12, SEAT_Y + 0.05, 0.13 * side), rot(rot(q, UP, 0.5 * side), RIGHT, Math.PI / 2), cat.fur);
+        if (rand() < 0.22) {
+          p.kind = 'lick';
+          movers.push(p);
+        } else {
+          p.starts = snapshot(seated);
+          drawSit(seated, p);
+          sitters.push(p);
+        }
         // จานข้าว + แก้วน้ำบนโต๊ะ
-        put(seated.plate, at(0.55, 0.815, 0), q, WHITE);
-        put(seated.food, at(0.55, 0.825, 0), q, pick(rand, FOOD));
-        if (rand() < 0.6) put(seated.cup, at(0.52, 0.86, rand() < 0.5 ? 0.24 : -0.24), q, pick(rand, DRINK));
+        put(seated.plate, p.at(0.55, 0.815, 0), p.q, WHITE);
+        put(seated.food, p.at(0.55, 0.825, 0), p.q, pick(rand, FOOD));
+        if (rand() < 0.6) put(seated.cup, p.at(0.52, 0.86, rand() < 0.5 ? 0.24 : -0.24), p.q, pick(rand, DRINK));
       }
+      // แมวนอนหลับ / บิดขี้เกียจ อยู่บนพื้นระหว่างแถว
+      const floor = rand();
+      if (floor < 0.1) movers.push(floorCat(t, 'sleep', rand));
+      else if (floor < 0.15) movers.push(floorCat(t, 'stretch', rand));
     }
     flush(seated);
+    if (movers.length > liveCap) {
+      if (live) dropSet(live);
+      liveCap = movers.length + 8;
+      live = catMeshes(liveCap);
+    }
   }
 
   // ---------- แมวเดินสี่ขาตามทางเดิน ----------
@@ -182,43 +373,56 @@ export function createPeople(scene, grid, types) {
       from = new THREE.Vector2(x, front);
       to = new THREE.Vector2(x, back);
     }
-    walkers.push({ from, to, len: from.distanceTo(to), speed: 0.45 + rand() * 0.4, phase: rand() * 2, cat: pick(rand, FURS) });
+    walkers.push({
+      kind: 'walk', from, to, len: from.distanceTo(to), speed: 0.45 + rand() * 0.4, phase: rand() * 2,
+      cat: pick(rand, FURS), pos: new THREE.Vector3(),
+    });
   }
   const walking = catMeshes(walkers.length);
   const pos2 = new THREE.Vector2();
 
+  let prev = 0;
   function update(time) {
+    const dt = Math.min(0.1, Math.max(0, time - prev));
+    prev = time;
+    now = time;
     if (!group.visible) return;
     for (const m of Object.values(walking)) m.count = 0;
     for (const w of walkers) {
-      // เดินไป-กลับ ตามช่วงทางเดินของตัวเอง
-      const k = (time * w.speed / w.len + w.phase) % 2;
+      // เดินไป-กลับ ตามช่วงทางเดินของตัวเอง (หยุดเดินตอนกระโดด)
+      const dy = hopDy(w);
+      if (!dy) w.t = (w.t ?? 0) + dt;
+      const k = ((w.t ?? 0) * w.speed / w.len + w.phase) % 2;
       const forward = k < 1;
       pos2.lerpVectors(w.from, w.to, forward ? k : 2 - k);
-      const dx = (w.to.x - w.from.x) * (forward ? 1 : -1);
-      const dz = (w.to.y - w.from.y) * (forward ? 1 : -1);
-      const yaw = Math.atan2(dx, dz);
-      const q = new THREE.Quaternion().setFromAxisAngle(UP, yaw);
-      const fx = Math.sin(yaw);
-      const fz = Math.cos(yaw);
-      const at = (f, y, side) => v.set(pos2.x + fx * f + fz * side, y, pos2.y + fz * f - fx * side);
-      const step = time * w.speed * 9 + w.phase * 10;
-      const swing = Math.sin(step) * 0.55;
-      const bob = Math.abs(Math.cos(step)) * 0.02;
-      const cat = w.cat;
-
-      // ตัวยาวแนวนอน ท้องขาว
-      put(walking.body, at(0, 0.34 + bob, 0), q, cat.fur, sc.set(0.15, 0.14, 0.27));
-      put(walking.soft, at(0.06, 0.29 + bob, 0), q, cat.patch, sc.set(0.1, 0.08, 0.17));
-      head(walking, at, 0.3, 0.5 + bob, cat, q, Math.sin(step * 0.5) * 0.08);
-      // ขาสี่ขา ก้าวสลับแบบทแยง
-      for (const [f, side, ph] of [[0.15, 0.08, 1], [0.15, -0.08, -1], [-0.15, 0.08, -1], [-0.15, -0.08, 1]]) {
-        put(walking.leg, at(f, 0.27 + bob, side), rot(q, RIGHT, swing * ph), cat.fur);
-      }
-      // หางชี้ขึ้น แกว่งซ้ายขวา
-      put(walking.tail, at(-0.25, 0.4 + bob, 0), rot(rot(q, RIGHT, -0.45), FWD, Math.sin(step * 0.5) * 0.35), cat.fur);
+      const yaw = Math.atan2((w.to.x - w.from.x) * (forward ? 1 : -1), (w.to.y - w.from.y) * (forward ? 1 : -1));
+      const { at, q } = frame(pos2.x, pos2.y, yaw);
+      w.pos.set(pos2.x, 0.55, pos2.y);
+      const step = (w.t ?? 0) * w.speed * 9 + w.phase * 10;
+      drawWalk(walking, at, q, w.cat, step, dy ? 0 : Math.sin(step) * 0.55, dy + Math.abs(Math.cos(step)) * 0.02);
     }
     flush(walking);
+
+    if (live) {
+      for (const m of Object.values(live)) m.count = 0;
+      for (const p of movers) {
+        const dy = hopDy(p);
+        if (p.kind === 'lick') {
+          const cyc = ((time + p.ph) % 5) / 5; // เลียอุ้งเท้าสักพัก แล้ววางลง
+          const lick = cyc < 0.55 ? Math.min(1, Math.sin((cyc / 0.55) * Math.PI) * 3) : 0;
+          drawSit(live, p, dy, dy ? 0 : lick, time);
+        } else if (p.kind === 'sleep') drawSleep(live, p, dy, time);
+        else if (p.kind === 'stretch') drawStretch(live, p, dy, time);
+        else if (p.kind === 'guard') drawGuard(live, p, dy, time);
+      }
+      flush(live);
+    }
+
+    for (const p of hopping) {
+      const dy = hopDy(p);
+      redraw(seated, p.starts, () => drawSit(seated, p, dy));
+      if (!p.hopAt) hopping.delete(p);
+    }
   }
 
   return {
@@ -227,5 +431,13 @@ export function createPeople(scene, grid, types) {
     setVisible(on) { group.visible = on; },
     setFocus() {}, // แมวสีสดตลอด ไม่จางตามโต๊ะ
     spots: () => (group.visible ? spots : []),
+    // แมวทุกตัวที่แตะได้ (ตำแหน่งเหนือหัว)
+    cats: () => (group.visible ? [...movers, ...sitters, ...walkers] : []),
+    // แตะแมว: กระโดดดึ๋ง แล้วบอก main.js ว่าแมวท่าไหน อยู่ตรงไหน
+    poke(c) {
+      c.hopAt = now;
+      if (c.starts) hopping.add(c);
+      return { pos: c.pos, kind: c.kind };
+    },
   };
 }
