@@ -198,18 +198,22 @@
   <!-- ดูรูปโต๊ะเต็มจอ -->
   <section id="photo-view" class="photo-view" hidden role="dialog" aria-label="รูปโต๊ะ">
     <div class="photo-view-top">
-      <div>
+      <div class="photo-view-head">
         <div class="photo-view-title" id="photo-view-title"></div>
         <div class="photo-view-sub" id="photo-view-sub"></div>
       </div>
-      <button id="photo-close" class="icon dark" aria-label="ปิด">✕</button>
+      <!-- ปุ่มเล็กมุมขวาบนแบบแอปรูปภาพของ Apple -->
+      <div class="glass-group">
+        <button id="photo-delete" class="glass-btn danger" aria-label="ลบรูป" title="ลบรูป"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-3 6h12l-1 11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 9Zm4 2v8h1.6v-8H10Zm3.4 0v8H15v-8h-1.6Z" fill="currentColor"/></svg></button>
+        <button id="photo-repick" class="glass-btn" aria-label="เลือกจากอัลบั้ม" title="เลือกจากอัลบั้ม"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="9" cy="9.5" r="1.8" fill="currentColor"/><path d="m4.5 17.5 5-5 3.5 3.5 2.5-2.5 4 4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg></button>
+        <button id="photo-retake" class="glass-btn" aria-label="ถ่ายใหม่" title="ถ่ายใหม่"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M8.6 4.5h6.8l1.4 2.2H20a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.7a2 2 0 0 1 2-2h3.2l1.4-2.2Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.6" fill="none" stroke="currentColor" stroke-width="1.9"/></svg></button>
+      </div>
     </div>
     <img id="photo-img" alt="รูปโต๊ะ">
-    <div class="photo-view-actions">
-      <button id="photo-delete" class="ghost dark">ลบรูป</button>
-      <button id="photo-repick" class="ghost dark">🖼️ อัลบั้ม</button>
-      <button id="photo-retake" class="primary">📷 ถ่ายใหม่</button>
-    </div>
+    <button id="photo-close" class="glass-back">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M14.5 5 8 12l6.5 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      กลับ
+    </button>
   </section>
 
   <div id="toast" class="toast" hidden></div>
