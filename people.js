@@ -129,7 +129,7 @@ export function createPeople(scene, grid, types) {
       const c = Math.cos(r);
       const s = Math.sin(r);
       for (const [sx, sz] of type.seats) {
-        if (rand() > 0.06 + busy * 0.34) continue; // เฉลี่ยราว 1 ใน 4 ของที่นั่ง
+        if (rand() > 0.04 + busy * 0.24) continue; // เฉลี่ยราว 1 ใน 6 ของที่นั่ง โปร่งตา
         // หันหน้าเข้าหาโต๊ะ
         const lx = Math.abs(sz) >= Math.abs(sx) ? 0 : -Math.sign(sx);
         const lz = Math.abs(sz) >= Math.abs(sx) ? -Math.sign(sz) : 0;
@@ -166,8 +166,8 @@ export function createPeople(scene, grid, types) {
   const back = grid.z0 + (rows - 1) * grid.rowSpacing + grid.rowSpacing * 0.6;
   const rand = seeded(20251104);
   const walkers = [];
-  for (let i = 0; i < 14; i++) {
-    const alongX = i < 3;
+  for (let i = 0; i < 9; i++) {
+    const alongX = i < 2;
     let from;
     let to;
     if (alongX) {
