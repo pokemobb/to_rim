@@ -356,6 +356,53 @@ marker.add(pin, ring);
 marker.visible = false;
 scene.add(marker);
 
+// ---------- แมวคุยกันเรื่องความอร่อย: ป้ายคำพูดเล็กๆ โผล่สุ่มทีละ 3-4 ตัว ----------
+const CHATS = [
+  'อร่อยมากกก 😋', 'เหมียว~ ฟินนน', 'กะเพราเผ็ดกำลังดี 🌶️', 'ไข่ดาวกรอบสุดๆ 🍳', 'ข้าวมันไก่วันนี้ปังมาก',
+  'ขอเติมข้าวอีกจาน!', 'น้ำแดงหวานชื่นใจ 🥤', 'หมูทอดกรอบนอกนุ่มใน', 'ส้มตำแซ่บบบ', 'อร่อยจนหางกระดิก 🐾',
+  'อิ่มแล้ว ง่วงเลย 😴', 'แบ่งชิมหน่อยสิ', 'ร้านนี้ต้องมาอีก ⭐', 'ซุปร้อนๆ หอมมาก', 'ของหวานวันนี้อะไรดี? 🍮',
+];
+const chatPool = Array.from({ length: 4 }, () => {
+  const el = document.createElement('div');
+  el.className = 'chat';
+  el.innerHTML = '<div class="chat-b"></div>';
+  const obj = new CSS2DObject(el);
+  obj.visible = false;
+  scene.add(obj);
+  return { obj, el, until: 0 };
+});
+let nextChatAt = 0;
+let lastChat = '';
+const chatNdc = new THREE.Vector3();
+function updateChats(now) {
+  const off = mode === 'admin' || document.hidden;
+  for (const c of chatPool) if (c.obj.visible && (off || now > c.until)) c.obj.visible = false;
+  if (off || now < nextChatAt) return;
+  nextChatAt = now + 900 + Math.random() * 1500;
+  const free = chatPool.find((c) => !c.obj.visible);
+  const spots = people.spots();
+  if (!free || !spots.length) return;
+  // เลือกแมวที่อยู่ในจอ ไม่ชนป้ายอื่น และไม่บังป้ายโต๊ะที่จองไว้
+  for (let tries = 0; tries < 14; tries++) {
+    const spot = spots[Math.floor(Math.random() * spots.length)];
+    chatNdc.copy(spot).project(camera);
+    if (Math.abs(chatNdc.x) > 0.78 || chatNdc.y > 0.82 || chatNdc.y < -0.85) continue;
+    if (marker.visible && Math.hypot(spot.x - marker.position.x, spot.z - marker.position.z) < 2.2) continue;
+    if (chatPool.some((c) => c.obj.visible && c.obj.position.distanceTo(spot) < 2.4)) continue;
+    let text;
+    do text = CHATS[Math.floor(Math.random() * CHATS.length)]; while (text === lastChat);
+    lastChat = text;
+    free.el.firstChild.textContent = text;
+    free.obj.position.copy(spot);
+    free.obj.visible = true;
+    free.until = now + 2800 + Math.random() * 1400;
+    free.el.firstChild.classList.remove('pop');
+    void free.el.offsetWidth;
+    free.el.firstChild.classList.add('pop');
+    return;
+  }
+}
+
 // ---------- เส้นนำทางจากประตูทางเข้าไปถึงโต๊ะ ----------
 // เดินเข้าประตู → ทางเดินหน้าแถวที่ 1 → ทางเดินข้างแถวของโต๊ะ (ช่องระหว่างหัวโต๊ะ) → ถึงหัวโต๊ะ
 const doors = layout.landmarks.filter((l) => l.kind === 'door');
@@ -1595,6 +1642,7 @@ renderer.setAnimationLoop(() => {
   callout.visible = marker.visible && !!selectedId;
 
   people.update(time);
+  updateChats(performance.now());
   chevrons.offset.x = -((time * 1.2) % 1); // ลูกศรไหลจากประตูไปหาโต๊ะ
   const bob = Math.sin(time * 2.2) * 0.12;
   callout.position.y = CALLOUT_Y + bob;

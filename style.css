@@ -732,9 +732,9 @@ body.mascot-on #hint { display: none; }
 .walker { top: -56px; width: 64px; height: 64px; }
 .walker-art { width: 64px; height: 64px; margin: 0; }
 @keyframes walk {
-  0% { transform: translateX(12px); }
-  50% { transform: translateX(calc(100vw - 76px)); }
-  100% { transform: translateX(12px); }
+  0% { left: 12px; }
+  50% { left: calc(100% - 76px); }
+  100% { left: 12px; }
 }
 /* แก้เมนู: รายการเมนูเลื่อนซ้ายขวาแถวเดียว ไม่โดนตัดครึ่ง */
 #food-edit .chips { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; max-height: none; padding-bottom: 2px; scrollbar-width: none; }
@@ -813,3 +813,48 @@ body.mascot-on #hint { display: none; }
 .actions button, .photo-album, .photo-badge { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .photo-cam { color: var(--accent); }
 .slot-empty { color: var(--accent); opacity: 0.45; display: grid; place-items: center; }
+
+/* ---------- ป้ายคำพูดแมวบนแผนที่ ----------
+   CSS2DRenderer ตั้ง transform ที่ .chat เอง จึงขยับ/แอนิเมชันที่ .chat-b แทน */
+.chat { pointer-events: none; }
+.chat-b {
+  position: relative;
+  transform: translateY(calc(-50% - 6px));
+  padding: 5px 9px;
+  border-radius: 12px;
+  background: #fff;
+  color: #1f1b3a;
+  font: 600 11px/1.2 var(--font);
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(50, 36, 140, 0.2);
+}
+.chat-b::after {
+  content: '';
+  position: absolute; left: 50%; bottom: -5px; margin-left: -5px;
+  border: 5px solid transparent; border-bottom: 0; border-top-color: #fff;
+}
+.chat-b.pop { animation: chatpop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1); }
+@keyframes chatpop { from { transform: translateY(calc(-50% + 4px)) scale(0.6); opacity: 0; } }
+
+/* ---------- ใช้บนมือถือเป็นหลัก: จอคอม/แท็บเล็ตแสดงเป็นกรอบขนาดมือถือกลางจอ ---------- */
+@media (min-width: 600px) {
+  :root { --fl: calc(50vw - 215px); }
+  html, body { background: #17142b; }
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; bottom: 0; left: var(--fl); right: var(--fl);
+    z-index: -1;
+    background:
+      radial-gradient(80% 45% at 100% 0%, rgba(255, 79, 109, 0.55), transparent 70%),
+      radial-gradient(90% 50% at 0% 100%, rgba(18, 184, 134, 0.35), transparent 70%),
+      linear-gradient(165deg, #4b2fd6 0%, #7a4cf0 55%, #b45cf0 100%);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.5);
+  }
+  #app { left: var(--fl); right: var(--fl); }
+  .dock { left: var(--fl); right: var(--fl); }
+  .card.top { left: calc(var(--fl) + 12px); }
+  .fab { right: calc(var(--fl) + 12px); }
+  .photo-view, .confetti { left: var(--fl); right: var(--fl); }
+  #admin { left: calc(var(--fl) + 12px); right: calc(var(--fl) + 12px); }
+}

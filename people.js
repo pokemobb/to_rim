@@ -111,6 +111,7 @@ export function createPeople(scene, grid, types) {
   // ---------- แมวนั่งบนเก้าอี้ ----------
   let seated = null;
   let capacity = 0;
+  let spots = []; // ตำแหน่งเหนือหัวแมวที่นั่งอยู่ ไว้ให้ main.js วางป้ายคำพูด
 
   function seat(tables, skipId) {
     const seats = tables.reduce((n, t) => n + (types[t.type] ?? types.long6).seats.length, 0);
@@ -120,6 +121,7 @@ export function createPeople(scene, grid, types) {
       seated = catMeshes(seats);
     }
     for (const m of Object.values(seated)) m.count = 0;
+    spots = [];
 
     for (const t of tables) {
       if (t.id === skipId) continue; // โต๊ะที่จองไว้ปล่อยว่าง ให้เห็นหมุดชัดๆ
@@ -148,6 +150,7 @@ export function createPeople(scene, grid, types) {
         put(seated.soft, at(0.13, SEAT_Y + 0.2, 0), q, cat.patch, sc.set(0.11, 0.14, 0.08));
         for (const k of [1, -1]) put(seated.soft, at(0.14, SEAT_Y + 0.04, 0.07 * k), q, cat.patch, sc.set(0.05, 0.04, 0.06));
         head(seated, at, 0.05, SEAT_Y + 0.53, cat, q, tilt);
+        spots.push(new THREE.Vector3(px, SEAT_Y + 0.78, pz));
         // หางวางพาดข้างตัวบนเก้าอี้
         const side = rand() < 0.5 ? 1 : -1;
         put(seated.tail, at(-0.12, SEAT_Y + 0.05, 0.13 * side), rot(rot(q, UP, 0.5 * side), RIGHT, Math.PI / 2), cat.fur);
@@ -226,5 +229,6 @@ export function createPeople(scene, grid, types) {
     update,
     setVisible(on) { group.visible = on; },
     setFocus() {}, // แมวสีสดตลอด ไม่จางตามโต๊ะ
+    spots: () => (group.visible ? spots : []),
   };
 }
