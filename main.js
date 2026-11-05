@@ -24,7 +24,6 @@ const TYPES = {
 };
 
 const COLOR = {
-  bg: 0xdde1e8, // ให้กลืนกับพื้นรอบอาคารตรงขอบไกลๆ
   table: 0x8a5a36, // โต๊ะไม้สีน้ำตาลแบบของจริง
   tableHover: 0xae7a4f,
   tableSelected: 0xff4d55,
@@ -73,7 +72,7 @@ const describe = (id) => {
 
 // ---------- ฉาก ----------
 const app = $('app');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); // โปร่งใส ให้เห็นลายซูชิด้านหลัง
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -85,7 +84,6 @@ labelRenderer.domElement.className = 'labels';
 app.appendChild(labelRenderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(COLOR.bg);
 
 const roomW = room.maxX - room.minX;
 const roomD = room.maxZ - room.minZ;

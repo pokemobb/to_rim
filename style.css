@@ -42,7 +42,8 @@ html, body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: var(--bg);
+  /* ลายซูชิน่ารักด้านหลังแผนที่ (แผนที่ 3D โปร่งใสรอบอาคาร) */
+  background: #ffefe6 url(bg-sushi.svg) 0 0 / 200px 200px repeat;
   color: var(--text);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;

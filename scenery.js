@@ -267,33 +267,41 @@ function tileTexture() {
 // สร้างฉากทั้งหมด คืนพื้นห้องไว้ใช้หาตำแหน่งที่แตะ
 export function buildScenery(scene, layout) {
   const { room } = layout;
-  const roomW = room.maxX - room.minX;
-  const roomD = room.maxZ - room.minZ;
   const cx = (room.minX + room.maxX) / 2;
   const cz = (room.minZ + room.maxZ) / 2;
 
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), mat(0xc9ced6, { roughness: 1 })); // พื้นรอบอาคาร สีเทาเรียบๆ ให้ตัวอาคารเด่น
+  // พื้นรอบอาคารโปร่งใส ให้เห็นลายซูชิของหน้าเว็บด้านหลัง เหลือแค่เงาจางๆ ของอาคาร
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({ opacity: 0.1 }));
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.02;
   ground.receiveShadow = true;
   scene.add(ground);
 
-  const tex = tileTexture();
-  tex.repeat.set(roomW / 0.8, roomD / 0.8); // กระเบื้อง 80 ซม.
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomD), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }));
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.set(cx, 0, cz);
+  // พื้นกระเบื้องในอาคาร: ต่อจากแผ่นสี่เหลี่ยมย่อยๆ เว้นส่วนที่กำแพงเว้าเข้ามา (room.cutouts)
+  const cutouts = room.cutouts ?? [];
+  const xs = [...new Set([room.minX, room.maxX, ...cutouts.flatMap((c) => [c.minX, c.maxX])])].sort((a, b) => a - b);
+  const zs = [...new Set([room.minZ, room.maxZ, ...cutouts.flatMap((c) => [c.minZ, c.maxZ])])].sort((a, b) => a - b);
+  const pieces = [];
+  for (let i = 0; i < xs.length - 1; i++) {
+    for (let k = 0; k < zs.length - 1; k++) {
+      const mx = (xs[i] + xs[i + 1]) / 2;
+      const mz = (zs[k] + zs[k + 1]) / 2;
+      if (cutouts.some((c) => mx > c.minX && mx < c.maxX && mz > c.minZ && mz < c.maxZ)) continue;
+      const g = new THREE.PlaneGeometry(xs[i + 1] - xs[i], zs[k + 1] - zs[k]).rotateX(-Math.PI / 2).translate(mx, 0, mz);
+      // ลายกระเบื้องตามพิกัดจริง แผ่นย่อยต่อกันจึงไม่เห็นรอย (กระเบื้อง 80 ซม.)
+      const pos = g.attributes.position;
+      const uv = g.attributes.uv;
+      for (let n = 0; n < pos.count; n++) uv.setXY(n, (pos.getX(n) - room.minX) / 0.8, (pos.getZ(n) - room.minZ) / 0.8);
+      pieces.push(g.toNonIndexed());
+    }
+  }
+  const floorGeo = new THREE.BufferGeometry();
+  floorGeo.setAttribute('position', new THREE.Float32BufferAttribute(pieces.flatMap((g) => [...g.attributes.position.array]), 3));
+  floorGeo.setAttribute('normal', new THREE.Float32BufferAttribute(pieces.flatMap((g) => [...g.attributes.normal.array]), 3));
+  floorGeo.setAttribute('uv', new THREE.Float32BufferAttribute(pieces.flatMap((g) => [...g.attributes.uv.array]), 2));
+  const floor = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ map: tileTexture(), roughness: 0.6 }));
   floor.receiveShadow = true;
   scene.add(floor);
-
-  // ส่วนที่กำแพงเว้าเข้ามา: ปิดพื้นกระเบื้องด้วยพื้นหญ้าข้างนอก
-  for (const c of room.cutouts ?? []) {
-    const patch = new THREE.Mesh(new THREE.PlaneGeometry(c.maxX - c.minX + 0.4, c.maxZ - c.minZ + 0.4), ground.material);
-    patch.rotation.x = -Math.PI / 2;
-    patch.position.set((c.minX + c.maxX) / 2 - 0.2 * Math.sign(cx - (c.minX + c.maxX) / 2), 0.004, (c.minZ + c.maxZ) / 2 - 0.2 * Math.sign(cz - (c.minZ + c.maxZ) / 2));
-    patch.receiveShadow = true;
-    scene.add(patch);
-  }
 
   // กำแพง เว้นช่องตรงประตูที่อยู่บนแนวกำแพง
   const doors = layout.landmarks.filter((l) => l.kind === 'door');
