@@ -13,7 +13,8 @@
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#f2f2f7">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
+  <link rel="icon" type="image/webp" href="shiba/happy.webp">
+  <link rel="apple-touch-icon" href="shiba/happy.webp">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
@@ -34,7 +35,7 @@
 
   <header class="card top">
     <div class="title-row">
-      <div class="title"><span class="avatar mini" data-char="cat"></span>วันนี้นั่งตรงไหนดี</div>
+      <div class="title"><span class="avatar mini" data-char="happy"></span>วันนี้นั่งตรงไหนดี</div>
       <button id="adm-exit" class="ghost small" hidden>ออกจากแอดมิน</button>
     </div>
     <div class="hint" id="hint"></div>
@@ -61,7 +62,7 @@
       <section id="tab-table" class="pane" role="tabpanel" aria-labelledby="tabbtn-table">
         <!-- ยังไม่ได้เลือกโต๊ะ: น้องข้าวช่วยแนะนำ (แตะเพื่อดูคำแนะนำถัดไป) -->
         <div id="table-empty" class="mascot">
-          <button id="mascot-btn" class="mascot-art" data-char="cat" aria-label="แตะเพื่อดูคำแนะนำถัดไป"></button>
+          <button id="mascot-btn" class="mascot-art" data-char="happy" aria-label="แตะเพื่อดูคำแนะนำถัดไป"></button>
           <div class="mascot-bubble" id="mascot-bubble" aria-live="polite"><b class="mascot-name" id="mascot-name"></b><span id="mascot-text"></span></div>
         </div>
 
@@ -103,7 +104,7 @@
         <!-- ฝั่งเพื่อน: เปิดจากลิงก์ -->
         <div id="banner" class="pane-stack" hidden>
           <div class="with-avatar">
-            <span class="avatar" data-char="dog"></span>
+            <span class="avatar" data-char="wave"></span>
             <div>
             <div class="label" id="ban-who"></div>
             <div class="big">โต๊ะ <span id="ban-id"></span></div>
@@ -122,7 +123,7 @@
       <section id="tab-food" class="pane" role="tabpanel" aria-labelledby="tabbtn-food" hidden>
         <div class="pane-stack">
           <div id="food-head" class="with-avatar">
-            <span class="avatar" data-char="bear"></span>
+            <span class="avatar" data-char="burger"></span>
             <div>
               <div class="big food-title">วันนี้กินอะไรดี</div>
               <div class="label" id="food-sub"></div>

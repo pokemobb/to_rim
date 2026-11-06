@@ -360,7 +360,7 @@ pin.add(stem, pinDot);
 const calloutEl = document.createElement('div');
 calloutEl.className = 'callout';
 // หมุดเป็นตัวละครน่ารักโผล่หัวอยู่บนป้าย เพื่อนมองหาโต๊ะได้ง่ายขึ้น
-calloutEl.innerHTML = '<div class="bubble"><span class="callout-char" data-char="cat"></span>'
+calloutEl.innerHTML = '<div class="bubble"><span class="callout-char" data-char="happy"></span>'
   + '<span class="callout-label"><small>ที่นั่งของเรา</small><b class="callout-text"></b></span></div>';
 const callout = new CSS2DObject(calloutEl);
 const calloutBubble = calloutEl.querySelector('.bubble');

@@ -1013,3 +1013,13 @@ body.mascot-on #hint { display: none; }
   100% { transform: scale(1) translateY(0); }
 }
 @media (prefers-reduced-motion: reduce) { .walker.walking .walker-art, .walker-art.pop { animation: none; } }
+
+/* ---------- ตัวละครทั้งแอปเป็นน้องชิบะ (รูป) ---------- */
+.avatar img, .mascot-art img, .callout-char img {
+  display: block; width: 100%; height: 100%;
+  object-fit: contain; object-position: 50% 100%;
+  -webkit-user-select: none; user-select: none; pointer-events: none;
+}
+.mascot-art img { filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1)); }
+.callout-char { overflow: hidden; }
+.callout-char img { object-position: 50% 20%; transform: scale(1.25) translateY(6%); }
