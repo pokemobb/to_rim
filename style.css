@@ -981,3 +981,35 @@ body.mascot-on #hint { display: none; }
 .zoom-seg { padding: 3px; height: 36px; box-sizing: border-box; align-items: center; }
 .zoom-seg button { width: 32px; height: 30px; min-height: 30px; font-size: 12px; }
 .callout .bubble { transform-origin: 50% 100%; }
+
+/* ---------- น้องชิบะบนขอบการ์ด (รูปจากชุดสติกเกอร์ ตัดพื้นหลังออก) ---------- */
+.walker {
+  position: absolute; top: -66px; left: 0;
+  width: 84px; height: 74px; padding: 0; min-height: 0;
+  background: none; border: 0; box-shadow: none; border-radius: 0;
+  animation: none; pointer-events: auto; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform;
+}
+.walker:active:not(:disabled) { transform: none; filter: none; }
+.walker-flip { display: block; width: 100%; height: 100%; transition: transform 0.2s; }
+.walker.flip .walker-flip { transform: scaleX(-1); }
+.walker-art {
+  display: block; width: 100%; height: 100%; margin: 0;
+  object-fit: contain; object-position: 50% 100%;
+  animation: none; transform-origin: 50% 100%;
+  filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.12));
+  -webkit-user-select: none; user-select: none; pointer-events: none;
+}
+.walker.walking .walker-art { animation: trot 0.34s ease-in-out infinite alternate; }
+.walker-art.pop { animation: shibapop 0.42s cubic-bezier(0.2, 1.6, 0.4, 1); }
+.walker.hop .walker-art { animation: hop 0.5s ease 2; }
+@keyframes trot {
+  from { transform: translateY(0) rotate(-3deg); }
+  to { transform: translateY(-5px) rotate(3deg); }
+}
+@keyframes shibapop {
+  0% { transform: scale(0.8) translateY(4px); }
+  100% { transform: scale(1) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) { .walker.walking .walker-art, .walker-art.pop { animation: none; } }

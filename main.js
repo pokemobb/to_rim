@@ -1191,6 +1191,7 @@ let toastTimer;
 const CONFETTI = ['#007aff', '#ff3b30', '#ffcc00', '#34c759', '#ff9500'];
 function celebrate() {
   navigator.vibrate?.(30);
+  shibaPose('cheer', 2600);
   for (const el of [$('walker'), calloutEl.querySelector('.callout-char'), $('mascot-btn')]) {
     el.classList.remove('hop');
     void el.offsetWidth;
@@ -1400,13 +1401,61 @@ function nextTip() {
 $('mascot-btn').addEventListener('click', nextTip);
 $('mascot-bubble').addEventListener('click', nextTip);
 
-// เพื่อนตัวเล็กที่เดินไปมาบนขอบการ์ด: เดินครบหนึ่งรอบแล้วสลับเป็นตัวถัดไป
-let walkerIndex = 1;
-$('walker').addEventListener('animationiteration', (e) => {
-  if (e.animationName !== 'walk') return;
-  walkerIndex = (walkerIndex + 1) % CHARACTERS.length;
-  $('walker').querySelector('.walker-art').dataset.char = CHARACTERS[walkerIndex].id;
-  paintCharacters($('walker'));
+// ---------- น้องชิบะเดินเล่นบนขอบการ์ด: เดินไปมา แวะหยุดทำท่าน่ารักสุ่มๆ แตะแล้วดีใจ ----------
+const SHIBA_POSES = ['happy', 'wink', 'wave', 'love', 'burger', 'boba', 'sparkle', 'music', 'cheer', 'cool', 'laptop', 'wow', 'sleep'];
+const SHIBA_TAP = ['love', 'cheer', 'wink', 'sparkle', 'happy'];
+for (const n of [...SHIBA_POSES, 'run']) new Image().src = `shiba/${n}.webp`; // โหลดรอไว้ เปลี่ยนท่าแล้วไม่กระพริบ
+const walkerEl = $('walker');
+const shibaImg = walkerEl.querySelector('.walker-art');
+const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const shiba = { x: 16, dir: 1, mode: calm ? 'pose' : 'walk', until: 0, last: 0, pose: 'run', prev: '' };
+function shibaPose(name, ms) {
+  shiba.mode = name === 'run' ? 'walk' : 'pose';
+  shiba.until = performance.now() + ms;
+  if (shiba.pose === name) return;
+  shiba.pose = name;
+  shibaImg.src = `shiba/${name}.webp`;
+  shibaImg.classList.remove('pop');
+  void shibaImg.offsetWidth;
+  shibaImg.classList.add('pop');
+}
+function randomPose() {
+  let p;
+  do p = SHIBA_POSES[Math.floor(Math.random() * SHIBA_POSES.length)]; while (p === shiba.prev);
+  shiba.prev = p;
+  return p;
+}
+function shibaTick(now) {
+  const dt = Math.min(0.1, (now - (shiba.last || now)) / 1000);
+  shiba.last = now;
+  if ($('dock').hidden || document.hidden) return;
+  const max = walkerEl.parentElement.clientWidth - walkerEl.offsetWidth - 14;
+  if (shiba.mode === 'walk') {
+    shiba.x += shiba.dir * 34 * dt;
+    if (shiba.x >= max) { shiba.x = max; shiba.dir = -1; }
+    if (shiba.x <= 14) { shiba.x = 14; shiba.dir = 1; }
+    if (now > shiba.until) {
+      const p = randomPose();
+      shibaPose(p, p === 'sleep' ? 4800 : 2800);
+    }
+  } else if (now > shiba.until) {
+    if (calm) shibaPose(randomPose(), 4000);
+    else {
+      if (Math.random() < 0.35) shiba.dir *= -1;
+      shibaPose('run', 3500 + Math.random() * 4000);
+    }
+  }
+  shiba.x = Math.min(Math.max(shiba.x, 14), Math.max(14, max));
+  walkerEl.style.transform = `translateX(${shiba.x.toFixed(1)}px)`;
+  walkerEl.classList.toggle('walking', shiba.mode === 'walk');
+  walkerEl.classList.toggle('flip', shiba.mode === 'walk' && shiba.dir < 0); // ท่าวิ่งในรูปหันขวา เดินซ้ายก็กลับด้าน
+}
+shiba.until = performance.now() + 2500;
+walkerEl.addEventListener('click', () => {
+  navigator.vibrate?.(12);
+  let p;
+  do p = SHIBA_TAP[Math.floor(Math.random() * SHIBA_TAP.length)]; while (p === shiba.pose);
+  shibaPose(p, 2200);
 });
 
 function shareUrl() {
@@ -1812,6 +1861,7 @@ renderer.setAnimationLoop(() => {
 
   people.update(time);
   updateChats(performance.now());
+  shibaTick(performance.now());
   for (const p of purrPool) if (p.obj.visible && (performance.now() > p.until || mode === 'admin')) p.obj.visible = false;
   chevrons.offset.x = -((time * 0.7) % 1); // รอยเท้าแมวเดินจากประตูไปหาโต๊ะ
   const bob = Math.sin(time * 2.2) * 0.12;
