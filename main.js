@@ -28,9 +28,8 @@ const TYPES = {
 const COLOR = {
   // แบบ Apple Maps: โต๊ะสีเทาเข้มบนพื้นขาว ตัดกันชัด และโต๊ะที่เลือกเป็นแดงระบบสีเดียวในแผนที่
   table: 0x3a3a3c,
-  tableHover: 0x007aff, // เมาส์ชี้ (บนคอม): โต๊ะเปลี่ยนเป็นสีฟ้าแทนการขึ้นเลขโต๊ะ ไม่บังแมว
-  tableSelected: 0xff3b30,
-  tableFaded: 0xc7c7cc, // โต๊ะอื่นตอนโฟกัสโต๊ะที่จอง: เทาอ่อน ยังแยกจากพื้นขาวได้
+  tableHover: 0x007aff, // เมาส์ชี้ (บนคอม): โต๊ะเปลี่ยนเป็นสีฟ้าแทนการขึ้นเลขโต๊ะ ไม่บังน้องหมา
+  tableSelected: 0xffffff, // โต๊ะที่จอง/เลือก: สีขาว มีขอบแดงรอบ (โต๊ะอื่นเทาเข้มตลอด ไม่ทำสีจาง)
   seat: 0xd1d1d6, // เก้าอี้เทาอ่อน ไม่แย่งสายตาจากโต๊ะ
   metal: 0x8e8e93,
   pin: 0xff3b30,
@@ -172,7 +171,7 @@ const clampZ = (z, zoom) => {
   const slack = (roomD / 2) * (1 - 1 / zoom);
   return THREE.MathUtils.clamp(z, lock.z - slack, lock.z + slack);
 };
-const HOME_ZOOM = 1; // เปิดมาที่มุมปกติ (1x) แล้วค่อยกดซูมดูแมวใกล้ๆ
+const HOME_ZOOM = 1; // เปิดมาที่มุมปกติ (1x) แล้วค่อยกดซูมดูน้องหมาใกล้ๆ
 function sideView(x = center.x, z = lock.z, zoom = HOME_ZOOM) {
   const d = lock.d / zoom;
   const target = new THREE.Vector3(clampX(x, d * lock.perMeter), 0, clampZ(z, zoom));
@@ -190,7 +189,7 @@ controls.enableDamping = true;
 controls.enableRotate = false;
 controls.minPolarAngle = controls.maxPolarAngle = TILT;
 controls.screenSpacePanning = false; // เลื่อนไปตามพื้น ไม่ใช่ตามจอ
-// ถ่างสองนิ้ว / ลูกกลิ้งเมาส์ ซูมเข้าไปดูแมวใกล้ๆ ได้ราว 3 เท่า ซูมออกได้ไม่เกินมุมปกติ
+// ถ่างสองนิ้ว / ลูกกลิ้งเมาส์ ซูมเข้าไปดูน้องหมาใกล้ๆ ได้ราว 3 เท่า ซูมออกได้ไม่เกินมุมปกติ
 const MAX_ZOOM = 3;
 controls.enableZoom = true;
 controls.zoomToCursor = true; // ซูมเข้าหาตรงที่นิ้ว/เมาส์ชี้
@@ -375,14 +374,18 @@ const ring = new THREE.Mesh(
 ring.rotation.x = -Math.PI / 2;
 ring.position.y = 0.02;
 
+// ขอบแดงรอบโต๊ะที่เลือก โต๊ะสีขาวจะได้ไม่กลืนกับพื้นขาว
+const rim = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: COLOR.pin, roughness: 0.5 }));
+rim.position.y = 0.745;
+
 const marker = new THREE.Group();
-marker.add(pin, ring);
+marker.add(pin, ring, rim);
 marker.visible = false;
 scene.add(marker);
 
-// ---------- แมวคุยกันเรื่องความอร่อย: ป้ายคำพูดเล็กๆ โผล่สุ่มทีละ 3-4 ตัว ----------
+// ---------- น้องหมาคุยกันเรื่องความอร่อย: ป้ายคำพูดเล็กๆ โผล่สุ่มทีละ 3-4 ตัว ----------
 const CHATS = [
-  'อร่อยมากกก 😋', 'เหมียว~ ฟินนน', 'กะเพราเผ็ดกำลังดี 🌶️', 'ไข่ดาวกรอบสุดๆ 🍳', 'ข้าวมันไก่วันนี้ปังมาก',
+  'อร่อยมากกก 😋', 'โฮ่ง~ ฟินนน', 'กะเพราเผ็ดกำลังดี 🌶️', 'ไข่ดาวกรอบสุดๆ 🍳', 'ข้าวมันไก่วันนี้ปังมาก',
   'ขอเติมข้าวอีกจาน!', 'น้ำแดงหวานชื่นใจ 🥤', 'หมูทอดกรอบนอกนุ่มใน', 'ส้มตำแซ่บบบ', 'อร่อยจนหางกระดิก 🐾',
   'อิ่มแล้ว ง่วงเลย 😴', 'แบ่งชิมหน่อยสิ', 'ร้านนี้ต้องมาอีก ⭐', 'ซุปร้อนๆ หอมมาก', 'ของหวานวันนี้อะไรดี? 🍮',
 ];
@@ -409,7 +412,7 @@ function updateChats(now) {
   const free = chatPool.find((c) => !c.obj.visible);
   const spots = people.spots();
   if (!free || !spots.length) return;
-  // เลือกแมวที่อยู่ในจอ ไม่ชนป้ายอื่น และไม่บังป้ายโต๊ะที่จองไว้
+  // เลือกน้องหมาที่อยู่ในจอ ไม่ชนป้ายอื่น และไม่บังป้ายโต๊ะที่จองไว้
   for (let tries = 0; tries < 14; tries++) {
     const spot = spots[Math.floor(Math.random() * spots.length)];
     chatNdc.copy(spot).project(camera);
@@ -430,10 +433,10 @@ function updateChats(now) {
   }
 }
 
-// ---------- แตะแมวในแผนที่: กระโดดดึ๋ง หัวใจลอย และร้องเมี้ยว ----------
+// ---------- แตะน้องหมาในแผนที่: กระโดดดึ๋ง หัวใจลอย และเห่าโฮ่ง ----------
 const PURRS = {
-  awake: ['เมี้ยว~', 'ขอปลาทูหน่อยน้า', 'ลูบหัวอีกได้ไหม', 'เหมียว! 💕', 'หิวแล้วอะ', 'รักนะ', 'เล่นกันไหม?', 'ปุกปุย~', 'เกาคางหน่อย'],
-  sleep: ['zZz…', 'ง่วงงง อย่าปลุกน้า', 'ฝันถึงปลาทูอยู่…'],
+  awake: ['โฮ่ง!', 'ขอกระดูกหน่อยน้า', 'ลูบหัวอีกได้ไหม', 'โฮ่งๆ! 💕', 'หิวแล้วอะ', 'รักนะ', 'โยนบอลเล่นกันไหม?', 'ปุกปุย~', 'เกาพุงหน่อย'],
+  sleep: ['zZz…', 'ง่วงงง อย่าปลุกน้า', 'ฝันถึงกระดูกอยู่…'],
   guard: ['เฝ้าโต๊ะให้อยู่นะ!', 'ที่นี่ของเราแล้ว 🐾', 'รีบมานะ รออยู่~', 'ไม่ให้ใครนั่งเลย!'],
 };
 const purrPool = Array.from({ length: 2 }, () => {
@@ -447,7 +450,7 @@ const purrPool = Array.from({ length: 2 }, () => {
 });
 const catNdc = new THREE.Vector3();
 const catTop = new THREE.Vector3();
-// แตะโดนแมวต้องแตะใกล้ตัวจริงๆ (รัศมีตามขนาดตัวแมวบนจอ) ไม่แย่งการแตะเลือกโต๊ะ
+// แตะโดนน้องหมาต้องแตะใกล้ตัวจริงๆ (รัศมีตามขนาดตัวน้องหมาบนจอ) ไม่แย่งการแตะเลือกโต๊ะ
 function catAt(e) {
   const r = canvas.getBoundingClientRect();
   const toPx = (v) => [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height];
@@ -497,7 +500,7 @@ const GUIDE_BLUE = 0x007aff;
 const GUIDE_WIDTH = 0.5;
 const GUIDE_Y = 0.04;
 
-// รอยเท้าแมวสีขาวบนแถบสีฟ้า เดินสลับซ้ายขวาจากประตูไปหาโต๊ะ (1 ช่องลาย = 1 เมตร)
+// รอยเท้าน้องหมาสีขาวบนแถบสีฟ้า เดินสลับซ้ายขวาจากประตูไปหาโต๊ะ (1 ช่องลาย = 1 เมตร)
 const chevrons = (() => {
   const c = document.createElement('canvas');
   c.width = 128;
@@ -626,8 +629,8 @@ const tmpColor = new THREE.Color();
 function paint(id) {
   const t = tableById.get(id);
   if (!t) return;
-  const on = id === selectedId || highlighted.has(id);
-  const color = on ? COLOR.tableSelected : id === hoverId ? COLOR.tableHover : focusOn ? COLOR.tableFaded : COLOR.table;
+  const color = id === selectedId ? COLOR.tableSelected
+    : highlighted.has(id) || id === hoverId ? COLOR.tableHover : COLOR.table;
   topsMesh.setColorAt(t.index, tmpColor.set(color));
   topsMesh.instanceColor.needsUpdate = true;
 }
@@ -651,7 +654,6 @@ function setSelected(id) {
   if (focus !== focusOn) {
     focusOn = focus;
     people.setFocus(focus);
-    seatMat.color.set(focus ? 0xe5e5ea : COLOR.seat);
     for (const t of tableList) paint(t.id);
   }
   const t = tableById.get(id);
@@ -659,6 +661,9 @@ function setSelected(id) {
   if (t) {
     paint(id);
     marker.position.set(t.x, 0, t.z);
+    const type = TYPES[t.type] ?? TYPES.long6;
+    rim.scale.set(type.w + 0.12, 0.034, type.d + 0.12);
+    rim.rotation.y = THREE.MathUtils.degToRad(t.rot ?? 0);
     const name = mode === 'friend' ? shared.name : ''; // ชื่อมีเฉพาะลิงก์แบบเก่า
     const who = name ? `${name} · ` : '';
     calloutEl.querySelector('.callout-text').textContent = `${who}โต๊ะ ${id}`;
@@ -707,7 +712,7 @@ canvas.addEventListener('pointercancel', (e) => {
   if (!fingers.size) pinching = false;
   downAt = null;
 });
-// แตะสองที: มุม 1x = ซูมเข้า (โดนแมว = บินไปหาแมวใกล้สุด, ที่อื่น = 2x ตรงที่แตะ) / ซูมอยู่แล้ว = กลับ 1x
+// แตะสองที: มุม 1x = ซูมเข้า (โดนน้องหมา = บินไปหาน้องหมาใกล้สุด, ที่อื่น = 2x ตรงที่แตะ) / ซูมอยู่แล้ว = กลับ 1x
 // แตะโต๊ะทีเดียวรอให้แน่ใจก่อนว่าไม่ใช่แตะสองที (ไม่งั้นจะเลือกโต๊ะทุกครั้งที่จะซูม)
 const DOUBLE_MS = 300;
 let lastTap = null;
@@ -749,7 +754,7 @@ canvas.addEventListener('pointerup', (e) => {
     renderAdmin();
     return;
   }
-  // แตะโดนโต๊ะ = เลือกโต๊ะก่อนเสมอ แมวที่นั่งโต๊ะแตะได้ตอนซูม 2x ขึ้นไป (ตัวใหญ่พอแตะแม่น)
+  // แตะโดนโต๊ะ = เลือกโต๊ะก่อนเสมอ น้องหมาที่นั่งโต๊ะแตะได้ตอนซูม 2x ขึ้นไป (ตัวใหญ่พอแตะแม่น)
   const onTable = mode === 'owner' && zoomLevel < 1.8 && !!tableAt(pt);
   const cat = onTable ? null : catAt(pt);
   const now = performance.now();
@@ -1338,7 +1343,7 @@ function addMenu() {
 $('food-add').addEventListener('click', addMenu);
 $('food-new').addEventListener('keydown', (e) => { if (e.key === 'Enter') addMenu(); });
 
-// ---------- ผองเพื่อนตัวละคร (แมว หมา หมี กระต่าย): ผลัดกันให้คำแนะนำในแท็บโต๊ะ ----------
+// ---------- ผองเพื่อนตัวละคร (น้องชิบะหลายท่า): ผลัดกันให้คำแนะนำในแท็บโต๊ะ ----------
 const TIPS = [
   'ลากซ้าย–ขวาเพื่อดูทั้งโรงอาหารได้นะ 👈👉',
   'ลูกศรสีฟ้าคือทางเดินจากประตูทางเข้าไปถึงโต๊ะ',
@@ -1855,7 +1860,7 @@ renderer.setAnimationLoop(() => {
     if (k === 1) flight = null;
   }
 
-  // ไม่ขึ้นเลขโต๊ะลอยบนแผนที่ (ไม่บังแมว): เมาส์ชี้ = โต๊ะเปลี่ยนสี ส่วนโต๊ะที่จองใช้ป้ายลอยสีแดง
+  // ไม่ขึ้นเลขโต๊ะลอยบนแผนที่ (ไม่บังน้องหมา): เมาส์ชี้ = โต๊ะเปลี่ยนสี ส่วนโต๊ะที่จองใช้ป้ายลอยสีแดง
   for (const t of tableList) t.tag.visible = false;
   callout.visible = marker.visible && !!selectedId;
 
@@ -1863,7 +1868,7 @@ renderer.setAnimationLoop(() => {
   updateChats(performance.now());
   shibaTick(performance.now());
   for (const p of purrPool) if (p.obj.visible && (performance.now() > p.until || mode === 'admin')) p.obj.visible = false;
-  chevrons.offset.x = -((time * 0.7) % 1); // รอยเท้าแมวเดินจากประตูไปหาโต๊ะ
+  chevrons.offset.x = -((time * 0.7) % 1); // รอยเท้าน้องหมาเดินจากประตูไปหาโต๊ะ
   const bob = Math.sin(time * 2.2) * 0.12;
   callout.position.y = CALLOUT_Y + bob;
   // ป้ายโต๊ะที่จอง: มุม 1x ย่อเหลือ 80% ไม่บังโต๊ะรอบๆ ซูม 2x ขึ้นไปเป็นขนาดเต็ม

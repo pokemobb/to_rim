@@ -1,49 +1,53 @@
 import * as THREE from 'three';
 
-// แมวเหมียวในโรงอาหาร: นั่งกินข้าว เลียอุ้งเท้า นอนขดหลับ บิดขี้เกียจ เดินเล่น และเฝ้าโต๊ะที่เราจองไว้
-// ใช้ InstancedMesh ทั้งหมด แมวหลายร้อยตัวก็ยังลื่นบนมือถือ
+// น้องชิบะหุ่นยนต์ในโรงอาหาร: นั่งกินข้าว เลียอุ้งเท้า นอนขดหลับ บิดขี้เกียจ เดินเล่น และเฝ้าโต๊ะที่เราจองไว้
+// ใช้ InstancedMesh ทั้งหมด หลายร้อยตัวก็ยังลื่นบนมือถือ
 // (ชื่อไฟล์/ฟังก์ชันยังเป็น people เพื่อให้ main.js เรียกได้เหมือนเดิม)
 
 const C = (c) => new THREE.Color(c);
-const EAR_IN = C('#ff9fb5');
-const NOSE = C('#ff7f9e');
+const EAR_IN = C('#fff1e0'); // ในหูสีครีม แบบชิบะ
+const NOSE = C('#2b2030');
 const EYE = C('#2b2030');
 const FOOD = [C('#f4a259'), C('#e9c46a'), C('#bc4b51'), C('#8cb369'), C('#f6e7cb')];
 const DRINK = [C('#e76f51'), C('#2a9d8f'), C('#f4d35e'), C('#6d597a')];
 const WHITE = C('#fbfbf8');
-const ORANGE = C('#f5a04a');
-const INKY = C('#3f3a44');
-const STRIPE = C('#7a5638');
-const POINT = C('#5a4334');
+const FACE = C('#fff4e6'); // แก้ม/ปากสีครีม
+const BLUSH = C('#ffb3b8');
+const SUIT = C('#f6f1ea'); // ตัวหุ่นยนต์สีขาวครีม
+const JOINT = C('#4a4a50'); // ขา ข้อต่อ อุ้งเท้า สีเทาเข้ม
+const PHONE = C('#9a9aa0'); // หูฟังหุ่นยนต์ข้างหัว
+const GLOW = C('#ff9f0a'); // วงไฟสีส้มที่หูฟัง/ป้ายอุ้งเท้าบนอก
+const TAN = C('#e8a96a');
 
-// ลายขนแมว: สีหลัก + ส่วนที่เปลี่ยนสีได้ (หู ขา อุ้งเท้า หาง ปาก ตา) + ลายบนตัว/หน้า
+// น้องชิบะหุ่นยนต์: หัว หู หางม้วน เป็นสีขน / ตัวเป็นชุดหุ่นยนต์ขาวครีม ขาเทาเข้ม / หูฟังมีไฟส้ม
 // ลายตัว [สี, [ข้าง, หลัง, แนวกระดูกสันหลัง], ขนาด] เทียบกับขนาดตัว ใช้ได้ทั้งท่านั่งและท่าเดิน
 // ลายหน้า [สี, [x, y, z], ขนาด] เทียบกับขนาดหัว (z ชี้ไปทางหน้า)
+const SHIBA_FACE = [
+  [FACE, [0, -0.38, 0.42], [0.86, 0.6, 0.62]], // แก้มขาวป่องๆ
+  ...[1, -1].flatMap((s) => [
+    [BLUSH, [0.6 * s, -0.22, 0.74], [0.17, 0.1, 0.08]], // แก้มแดง
+    [PHONE, [1.0 * s, 0.02, -0.08], [0.16, 0.46, 0.46]], // หูฟัง
+    [GLOW, [1.13 * s, 0.02, -0.08], [0.06, 0.26, 0.26]],
+  ]),
+];
 function coat(o) {
-  return { ears: [o.fur, o.fur], leg: o.fur, paw: o.patch, tail: o.fur, muzzle: o.patch, eye: EYE, body: [], face: [], ...o };
+  return {
+    ears: [o.fur, o.fur], suit: SUIT, patch: C('#ffffff'), leg: JOINT, paw: JOINT, tail: o.fur, muzzle: FACE, eye: EYE,
+    body: [[GLOW, [0, -1.15, 0.25], [0.2, 0.08, 0.2]]], // ป้ายอุ้งเท้าสีส้มกลางอก
+    face: SHIBA_FACE, ...o,
+  };
 }
+const RED = coat({ fur: C('#f39a4a') });
 const FURS = [
-  coat({ fur: ORANGE, patch: C('#fff8ef') }), // ส้ม
-  coat({ fur: C('#f7d8a8'), patch: C('#fffaf3') }), // ครีม
-  coat({ fur: C('#fffaf4'), patch: C('#ffe3cc') }), // ขาว
-  coat({ fur: C('#a9adb8'), patch: C('#ffffff') }), // เทา
-  coat({ fur: INKY, patch: C('#ffffff') }), // ดำ
-  coat({ fur: C('#b07a4e'), patch: C('#fff3e6') }), // น้ำตาล
-  coat({ // สามสี
-    fur: C('#fffaf4'), patch: C('#ffffff'), ears: [ORANGE, INKY], tail: ORANGE,
-    body: [[ORANGE, [0.5, 0.6, -0.3], [0.6, 0.5, 0.6]], [INKY, [-0.5, 0.55, 0.35], [0.55, 0.5, 0.5]]],
-    face: [[ORANGE, [0.55, 0.55, -0.15], [0.55, 0.55, 0.6]], [INKY, [-0.55, 0.6, -0.25], [0.5, 0.5, 0.5]]],
-  }),
-  coat({ // ลายสลิด
-    fur: C('#c49a6c'), patch: C('#fbf1e3'),
-    body: [-0.5, -0.1, 0.3].map((a) => [STRIPE, [0, 0.82, a], [0.82, 0.3, 0.13]]),
-    face: [-0.32, 0, 0.32].map((x) => [STRIPE, [x, 0.62, 0.5], [0.12, 0.34, 0.32]]),
-  }),
-  coat({ // วิเชียรมาศ: หน้า หู ขา หาง สีเข้ม ตาฟ้า
-    fur: C('#f3e7d3'), patch: C('#fbf6ec'), ears: [POINT, POINT], leg: POINT, paw: POINT, tail: POINT, muzzle: POINT,
-    eye: C('#3d8bfd'), face: [[POINT, [0, -0.2, 0.72], [0.6, 0.55, 0.38]]],
+  RED, RED, RED, // ชิบะสีแดงส้ม (เยอะสุด เหมือนน้องในรูป)
+  coat({ fur: C('#f3d5aa') }), // ชิบะครีม
+  coat({ fur: C('#c98a52') }), // ชิบะงา
+  coat({ // ชิบะดำแทน มีคิ้วจุดสีแทน
+    fur: C('#3d3539'),
+    face: [...SHIBA_FACE, ...[1, -1].map((s) => [TAN, [0.36 * s, 0.36, 0.86], [0.11, 0.07, 0.06]])],
   }),
 ];
+const GUARD = RED;
 
 const pick = (rand, list) => list[Math.floor(rand() * list.length)];
 const hash = (text) => [...text].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7) >>> 0;
@@ -68,7 +72,7 @@ export function createPeople(scene, grid, types) {
     ear: new THREE.ConeGeometry(0.06, 0.12, 8),
     earIn: new THREE.ConeGeometry(0.034, 0.075, 8),
     leg: new THREE.CapsuleGeometry(0.045, 0.12, 3, 8).translate(0, -0.1, 0), // จุดหมุนอยู่ที่สะโพก/ไหล่
-    tail: new THREE.CapsuleGeometry(0.034, 0.28, 3, 8).translate(0, 0.17, 0), // จุดหมุนที่โคนหาง
+    tail: new THREE.SphereGeometry(0.085, 14, 10).scale(1, 1.1, 0.9).translate(0, 0.07, 0), // หางม้วนกลมฟูแบบชิบะ
     plate: new THREE.CylinderGeometry(0.15, 0.12, 0.025, 16),
     food: new THREE.SphereGeometry(0.095, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2),
     cup: new THREE.CylinderGeometry(0.045, 0.038, 0.12, 10),
@@ -89,7 +93,7 @@ export function createPeople(scene, grid, types) {
   const catMeshes = (n) => ({
     body: mesh(geo.ball, n * 2, true), // ตัว + หัว
     soft: mesh(geo.ball, n * 5), // อก อุ้งเท้า ปาก จมูก (ชิ้นเล็กไม่ต้องมีเงา)
-    mark: mesh(geo.ball, n * 6), // ลายขน
+    mark: mesh(geo.ball, n * 12), // แก้ม หูฟัง ป้ายบนอก
     eye: mesh(geo.ball, n * 2),
     ear: mesh(geo.ear, n * 2),
     earIn: mesh(geo.earIn, n * 2),
@@ -164,7 +168,7 @@ export function createPeople(scene, grid, types) {
   function drawSit(set, p, dy = 0, lick = 0, time = 0) {
     const { at, q, cat } = p;
     bc.copy(at(-0.02, SEAT_Y + 0.21 + dy, 0));
-    put(set.body, bc, q, cat.fur, sc.set(...SIT));
+    put(set.body, bc, q, cat.suit, sc.set(...SIT));
     bodyMarks(set, cat, bc, q, SIT, true);
     put(set.soft, at(0.13, SEAT_Y + 0.2 + dy, 0), q, cat.patch, sc.set(0.11, 0.14, 0.08));
     for (const k of [1, -1]) {
@@ -184,7 +188,7 @@ export function createPeople(scene, grid, types) {
     const { at, q, cat, side } = p;
     const S = [0.2, 0.12 * (1 + Math.sin(time * 2 + p.ph) * 0.06), 0.25];
     bc.copy(at(0, 0.12 + dy, 0));
-    put(set.body, bc, q, cat.fur, sc.set(...S));
+    put(set.body, bc, q, cat.suit, sc.set(...S));
     bodyMarks(set, cat, bc, q, S, false);
     put(set.soft, at(0.25, 0.04 + dy, -0.07 * side), q, cat.paw, sc.set(0.05, 0.035, 0.06));
     head(set, at, 0.2, 0.15 + dy, cat, rot(q, UP, -0.5 * side), 0.45 * side, true);
@@ -199,7 +203,7 @@ export function createPeople(scene, grid, types) {
     const s = Math.pow(Math.max(0, Math.sin(cyc * Math.PI * 2)), 0.7);
     const bq = rot(q, RIGHT, 0.38 * s);
     bc.copy(at(-0.03 * s, 0.34 - 0.07 * s + dy, 0));
-    put(set.body, bc, bq, cat.fur, sc.set(...WALK));
+    put(set.body, bc, bq, cat.suit, sc.set(...WALK));
     put(set.soft, offset(bc, bq, 0, -0.05, 0.06), bq, cat.patch, sc.set(0.1, 0.08, 0.17));
     bodyMarks(set, cat, bc, bq, WALK, false);
     head(set, at, 0.3, 0.5 - 0.24 * s + dy, cat, q, 0, s > 0.6);
@@ -213,7 +217,7 @@ export function createPeople(scene, grid, types) {
   // เดินสี่ขา ก้าวสลับแบบทแยง หางชี้ขึ้นแกว่งซ้ายขวา
   function drawWalk(set, at, q, cat, step, swing, dy) {
     bc.copy(at(0, 0.34 + dy, 0));
-    put(set.body, bc, q, cat.fur, sc.set(...WALK));
+    put(set.body, bc, q, cat.suit, sc.set(...WALK));
     put(set.soft, at(0.06, 0.29 + dy, 0), q, cat.patch, sc.set(0.1, 0.08, 0.17));
     bodyMarks(set, cat, bc, q, WALK, false);
     head(set, at, 0.3, 0.5 + dy, cat, q, Math.sin(step * 0.5) * 0.08);
@@ -228,7 +232,7 @@ export function createPeople(scene, grid, types) {
   function drawGuard(set, p, dy, time) {
     const { at, q, cat } = p;
     bc.copy(at(0, TABLE_Y + 0.11 + dy, 0));
-    put(set.body, bc, q, cat.fur, sc.set(...LOAF));
+    put(set.body, bc, q, cat.suit, sc.set(...LOAF));
     bodyMarks(set, cat, bc, q, LOAF, false);
     put(set.soft, at(0.17, TABLE_Y + 0.1 + dy, 0), q, cat.patch, sc.set(0.1, 0.08, 0.08));
     for (const k of [1, -1]) put(set.soft, at(0.22, TABLE_Y + 0.03 + dy, 0.07 * k), q, cat.paw, sc.set(0.05, 0.035, 0.06));
@@ -305,7 +309,7 @@ export function createPeople(scene, grid, types) {
         const lx = Math.max(0.28, type.w / 2 - 0.45);
         const px = t.x + lx * c;
         const pz = t.z - lx * s;
-        movers.push({ kind: 'guard', ...frame(px, pz, Math.PI), cat: FURS[0], pos: new THREE.Vector3(px, TABLE_Y + 0.3, pz) });
+        movers.push({ kind: 'guard', ...frame(px, pz, Math.PI), cat: GUARD, pos: new THREE.Vector3(px, TABLE_Y + 0.3, pz) });
         continue;
       }
       const rand = seeded(hash(t.id));
